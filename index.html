@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 小游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 游戏主容器 -->
+    <div class="game-container">
+        <!-- 游戏标题和分数区域 -->
+        <div class="header">
+            <h1 class="title">2048</h1>
+            <div class="score-container">
+                <div class="score-box">
+                    <div class="score-label">分数</div>
+                    <div id="score" class="score-value">0</div>
+                </div>
+                <div class="score-box">
+                    <div class="score-label">最高分</div>
+                    <div id="best-score" class="score-value">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作提示 -->
+        <div class="instructions">
+            <p>使用 <strong>↑ ↓ ← →</strong> 方向键移动方块</p>
+            <p>相同数字的方块碰撞时会合并成它们的和</p>
+            <p>达到 <strong>2048</strong> 即为胜利！</p>
+        </div>
+
+        <!-- 游戏棋盘 -->
+        <div class="game-board" id="game-board">
+            <!-- 棋盘格子由 JavaScript 动态生成 -->
+        </div>
+
+        <!-- 重新开始按钮 -->
+        <button id="restart-btn" class="restart-btn">重新开始</button>
+
+        <!-- 游戏结束遮罩层 -->
+        <div id="game-over" class="game-over">
+            <div class="game-over-content">
+                <h2 id="game-over-title"></h2>
+                <p>最终得分: <span id="final-score"></span></p>
+                <button id="play-again-btn">再来一局</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入游戏逻辑脚本 -->
+    <script src="game.js"></script>
+</body>
+</html>

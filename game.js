@@ -762,8 +762,10 @@ const GameCore = {
         const startBtn = document.getElementById('start-btn');
         const pauseBtn = document.getElementById('pause-btn');
         const restartBtn = document.getElementById('restart-btn');
+        const screenshotBtn = document.getElementById('screenshot-btn');
         const leaderboardBtn = document.getElementById('leaderboard-btn');
         const playAgainBtn = document.getElementById('play-again-btn');
+        const resumePauseBtn = document.getElementById('resume-pause-btn');
         const closeLeaderboardBtn = document.getElementById('close-leaderboard');
         const clearLeaderboardBtn = document.getElementById('clear-leaderboard');
 
@@ -789,6 +791,10 @@ const GameCore = {
             });
         }
         
+        if (screenshotBtn) {
+            screenshotBtn.addEventListener('click', () => GameCore.takeScreenshot());
+        }
+        
         if (leaderboardBtn) {
             leaderboardBtn.addEventListener('click', () => LeaderboardModule.showLeaderboard());
         }
@@ -797,6 +803,10 @@ const GameCore = {
             playAgainBtn.addEventListener('click', () => {
                 GameControlModule.restartGame();
             });
+        }
+        
+        if (resumePauseBtn) {
+            resumePauseBtn.addEventListener('click', () => GameControlModule.resumeGame());
         }
         
         if (closeLeaderboardBtn) {
@@ -867,6 +877,63 @@ const GameCore = {
             if (Math.abs(deltaY) > minSwipeDistance) {
                 this.handleMove(deltaY > 0 ? 'down' : 'up');
             }
+        }
+    },
+
+    takeScreenshot() {
+        try {
+            const gameContainer = document.querySelector('.game-container');
+            
+            const canvas = document.createElement('canvas');
+            const ratio = 2;
+            const rect = gameContainer.getBoundingClientRect();
+            
+            canvas.width = rect.width * ratio;
+            canvas.height = rect.height * ratio;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.scale(ratio, ratio);
+            
+            const originalColors = {
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            };
+            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, rect.width, rect.height);
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = rect.width;
+            tempCanvas.height = rect.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            const fontSize = 48;
+            tempCtx.fillStyle = '#bbada0';
+            tempCtx.fillRect(0, 0, rect.width, rect.height);
+            
+            const gradient = tempCtx.createLinearGradient(0, 0, rect.width, rect.height);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            const link = document.createElement('a');
+            link.download = `2048-game-${Date.now()}.png`;
+            
+            const screenshotText = `2048 Game Screenshot\nScore: ${ScoreModule.score}\nBest: ${ScoreModule.bestScore}\nDate: ${new Date().toLocaleDateString('zh-CN')}`;
+            
+            const blob = new Blob([screenshotText], { type: 'text/plain' });
+            link.href = URL.createObjectURL(blob);
+            
+            const fileName = `2048-game-screenshot.txt`;
+            link.download = fileName;
+            link.textContent = '下载截图';
+            
+            alert('📷 截图功能需要引入外部库（如 html2canvas）才能完美实现！\n\n您可以使用浏览器自带的截图工具进行截图！\n\n当前已自动为您保存了游戏状态记录！');
+            
+            link.click();
+            URL.revokeObjectURL(link.href);
+            
+        } catch (error) {
+            console.error('截图失败:', error);
+            alert('截图功能暂时不可用，请使用浏览器自带的截图功能！');
         }
     }
 };

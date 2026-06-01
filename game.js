@@ -5,7 +5,9 @@ const StorageModule = {
     STORAGE_KEYS: {
         BEST_SCORE: '2048_best_score',
         LEADERBOARD: '2048_leaderboard',
-        TOTAL_GAMES: '2048_total_games'
+        TOTAL_GAMES: '2048_total_games',
+        AUDIO_ENABLED: '2048_audio_enabled',
+        THEME: '2048_theme'
     },
 
     saveBestScore(score) {
@@ -85,6 +87,267 @@ const StorageModule = {
             localStorage.setItem(this.STORAGE_KEYS.TOTAL_GAMES, (current + 1).toString());
         } catch (e) {
             console.error('增加总局数失败:', e);
+        }
+    },
+
+    saveAudioEnabled(enabled) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.AUDIO_ENABLED, enabled.toString());
+        } catch (e) {
+            console.error('保存音效设置失败:', e);
+        }
+    },
+
+    getAudioEnabled() {
+        try {
+            const enabled = localStorage.getItem(this.STORAGE_KEYS.AUDIO_ENABLED);
+            return enabled === null ? true : enabled === 'true';
+        } catch (e) {
+            console.error('读取音效设置失败:', e);
+            return true;
+        }
+    },
+
+    saveTheme(theme) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.THEME, theme);
+        } catch (e) {
+            console.error('保存主题设置失败:', e);
+        }
+    },
+
+    getTheme() {
+        try {
+            const theme = localStorage.getItem(this.STORAGE_KEYS.THEME);
+            return theme || 'classic';
+        } catch (e) {
+            console.error('读取主题设置失败:', e);
+            return 'classic';
+        }
+    }
+};
+
+// ========================================
+// 音效模块 - 使用Web Audio API实现音效
+// ========================================
+const AudioModule = {
+    audioContext: null,
+    enabled: true,
+    sounds: {},
+
+    init() {
+        this.enabled = StorageModule.getAudioEnabled();
+        this.createSounds();
+        this.updateButtonDisplay();
+    },
+
+    createSounds() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            this.sounds = {
+                move: () => this.playMoveSound(),
+                merge: () => this.playMergeSound(),
+                newTile: () => this.playNewTileSound(),
+                win: () => this.playWinSound(),
+                gameOver: () => this.playGameOverSound()
+            };
+        } catch (e) {
+            console.error('Web Audio API不可用:', e);
+        }
+    },
+
+    ensureContext() {
+        if (!this.audioContext) {
+            this.createSounds();
+        }
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+    },
+
+    playMoveSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = 200;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.1);
+        } catch (e) {
+            console.error('播放移动音效失败:', e);
+        }
+    },
+
+    playMergeSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.1);
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.15);
+        } catch (e) {
+            console.error('播放合并音效失败:', e);
+        }
+    },
+
+    playNewTileSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = 600;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.08, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.05);
+        } catch (e) {
+            console.error('播放新方块音效失败:', e);
+        }
+    },
+
+    playWinSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.3);
+                }, index * 150);
+            });
+        } catch (e) {
+            console.error('播放胜利音效失败:', e);
+        }
+    },
+
+    playGameOverSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const notes = [392, 349.23, 329.63, 293.66];
+            notes.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sawtooth';
+                    
+                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.4);
+                }, index * 200);
+            });
+        } catch (e) {
+            console.error('播放游戏结束音效失败:', e);
+        }
+    },
+
+    play(type) {
+        if (this.sounds[type]) {
+            this.sounds[type]();
+        }
+    },
+
+    toggle() {
+        this.ensureContext();
+        this.enabled = !this.enabled;
+        StorageModule.saveAudioEnabled(this.enabled);
+        this.updateButtonDisplay();
+    },
+
+    updateButtonDisplay() {
+        const button = document.getElementById('audio-toggle');
+        if (button) {
+            button.textContent = this.enabled ? '🔊' : '🔇';
+            button.title = this.enabled ? '音效已开启' : '音效已关闭';
+        }
+    }
+};
+
+// ========================================
+// 主题模块 - 管理主题切换
+// ========================================
+const ThemeModule = {
+    currentTheme: 'classic',
+
+    init() {
+        this.currentTheme = StorageModule.getTheme();
+        this.applyTheme();
+        this.updateButtonDisplay();
+    },
+
+    toggle() {
+        this.currentTheme = this.currentTheme === 'classic' ? 'dark' : 'classic';
+        StorageModule.saveTheme(this.currentTheme);
+        this.applyTheme();
+        this.updateButtonDisplay();
+    },
+
+    applyTheme() {
+        document.body.classList.remove('theme-classic', 'theme-dark');
+        document.body.classList.add(`theme-${this.currentTheme}`);
+    },
+
+    updateButtonDisplay() {
+        const button = document.getElementById('theme-toggle');
+        if (button) {
+            button.textContent = this.currentTheme === 'classic' ? '🌙' : '☀️';
+            button.title = this.currentTheme === 'classic' ? '切换到暗夜主题' : '切换到经典主题';
         }
     }
 };
@@ -171,6 +434,7 @@ const AnimationModule = {
         setTimeout(() => {
             cellElement.classList.remove('cell-new');
         }, 200);
+        AudioModule.play('newTile');
     },
 
     animateMergedTile(cellElement) {
@@ -384,13 +648,12 @@ const GameCore = {
         this.elements.finalScoreElement = document.getElementById('final-score');
 
         ScoreModule.init();
+        AudioModule.init();
+        ThemeModule.init();
 
         this.setupDifficulty();
-
         this.initBoardCells();
-
         this.initEventListeners();
-
         this.resetGameState();
     },
 
@@ -519,6 +782,7 @@ const GameCore = {
                 filtered[i + 1] = 0;
                 
                 ScoreModule.addScore(filtered[i]);
+                AudioModule.play('merge');
                 
                 if (filtered[i] === 2048 && !this.hasWon) {
                     this.hasWon = true;
@@ -651,42 +915,14 @@ const GameCore = {
         return { moved, mergePositions };
     },
 
-    canMove() {
-        for (let i = 0; i < this.gridSize; i++) {
-            for (let j = 0; j < this.gridSize; j++) {
-                if (this.board[i][j] === 0) {
-                    return true;
-                }
-            }
+    move(direction) {
+        if (this.isMoving || this.gameOver || !GameControlModule.isRunning || GameControlModule.isPaused) {
+            return;
         }
-        
-        for (let i = 0; i < this.gridSize; i++) {
-            for (let j = 0; j < this.gridSize - 1; j++) {
-                if (this.board[i][j] === this.board[i][j + 1]) {
-                    return true;
-                }
-            }
-        }
-        
-        for (let j = 0; j < this.gridSize; j++) {
-            for (let i = 0; i < this.gridSize - 1; i++) {
-                if (this.board[i][j] === this.board[i + 1][j]) {
-                    return true;
-                }
-            }
-        }
-        
-        return false;
-    },
 
-    handleMove(direction) {
-        if (!GameControlModule.isRunning || GameControlModule.isPaused || this.gameOver) return;
-        if (this.isMoving) return;
-        
         this.isMoving = true;
         
-        let result = { moved: false, mergePositions: [] };
-        
+        let result;
         switch (direction) {
             case 'left':
                 result = this.moveLeft();
@@ -700,79 +936,132 @@ const GameCore = {
             case 'down':
                 result = this.moveDown();
                 break;
+            default:
+                this.isMoving = false;
+                return;
         }
-        
-        if (result.moved) {
-            if (ScoreModule.lastAddedScore > 0) {
-                const boardRect = this.elements.gameBoard.getBoundingClientRect();
-                const centerX = boardRect.width / 2;
-                const centerY = boardRect.height / 2;
-                AnimationModule.showScorePopup(ScoreModule.lastAddedScore, { x: centerX, y: centerY });
-            }
 
-            setTimeout(() => {
-                result.mergePositions.forEach(pos => {
-                    const cellElement = document.querySelector(`.cell[row="${pos.row}"][col="${pos.col}"]`);
-                    AnimationModule.animateMergedTile(cellElement);
-                });
-            }, 50);
-            
-            this.addRandomTile();
-            
+        if (result.moved) {
+            AudioModule.play('move');
             this.updateDisplay();
             
-            if (this.hasWon) {
-                this.showGameOver(true);
-                GameControlModule.gameOver(true);
-                return;
-            }
-            
-            if (!this.canMove()) {
-                this.showGameOver(false);
-                GameControlModule.gameOver(false);
+            result.mergePositions.forEach(pos => {
+                const cellElement = document.querySelector(`.cell[row="${pos.row}"][col="${pos.col}"]`);
+                AnimationModule.animateMergedTile(cellElement);
+            });
+
+            setTimeout(() => {
+                this.addRandomTile();
+                this.updateDisplay();
+                
+                if (this.hasWon) {
+                    this.showGameOver(true);
+                } else if (this.checkGameOver()) {
+                    this.showGameOver(false);
+                }
+                
+                this.isMoving = false;
+            }, 100);
+        } else {
+            this.isMoving = false;
+        }
+    },
+
+    checkGameOver() {
+        if (this.getEmptyCells().length > 0) {
+            return false;
+        }
+        
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const current = this.board[i][j];
+                if (j < this.gridSize - 1 && current === this.board[i][j + 1]) {
+                    return false;
+                }
+                if (i < this.gridSize - 1 && current === this.board[i + 1][j]) {
+                    return false;
+                }
             }
         }
         
-        this.isMoving = false;
+        return true;
     },
 
     showGameOver(isWin) {
         this.gameOver = true;
         
-        if (this.elements.gameOverTitle) {
-            this.elements.gameOverTitle.textContent = isWin ? '🎉 恭喜胜利！' : '😔 游戏结束';
-        }
-        if (this.elements.finalScoreElement) {
+        if (this.elements.gameOverElement) {
+            if (isWin) {
+                this.elements.gameOverTitle.textContent = '🎉 恭喜胜利！';
+                AudioModule.play('win');
+            } else {
+                this.elements.gameOverTitle.textContent = '😢 游戏结束';
+                AudioModule.play('gameOver');
+            }
             this.elements.finalScoreElement.textContent = ScoreModule.getScore();
+            this.elements.gameOverElement.classList.add('show');
         }
         
-        setTimeout(() => {
-            if (this.elements.gameOverElement) {
-                this.elements.gameOverElement.classList.add('show');
-            }
-        }, 300);
+        GameControlModule.gameOver(isWin);
     },
 
     initEventListeners() {
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        
-        this.elements.gameBoard.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        this.elements.gameBoard.addEventListener('touchend', (e) => this.handleTouchEnd(e));
-        
-        const startBtn = document.getElementById('start-btn');
-        const pauseBtn = document.getElementById('pause-btn');
-        const restartBtn = document.getElementById('restart-btn');
-        const screenshotBtn = document.getElementById('screenshot-btn');
-        const leaderboardBtn = document.getElementById('leaderboard-btn');
-        const playAgainBtn = document.getElementById('play-again-btn');
-        const resumePauseBtn = document.getElementById('resume-pause-btn');
-        const closeLeaderboardBtn = document.getElementById('close-leaderboard');
-        const clearLeaderboardBtn = document.getElementById('clear-leaderboard');
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) > -1) {
+                e.preventDefault();
+                const direction = e.key.replace('Arrow', '').toLowerCase();
+                this.move(direction);
+            }
+        });
 
-        if (startBtn) {
-            startBtn.addEventListener('click', () => GameControlModule.startGame());
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        if (this.elements.gameBoard) {
+            this.elements.gameBoard.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            this.elements.gameBoard.addEventListener('touchend', (e) => {
+                if (!e.changedTouches[0]) return;
+                
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                
+                const diffX = touchEndX - touchStartX;
+                const diffY = touchEndY - touchStartY;
+                
+                const minSwipeDistance = 30;
+                
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > minSwipeDistance) {
+                        if (diffX > 0) {
+                            this.move('right');
+                        } else {
+                            this.move('left');
+                        }
+                    }
+                } else {
+                    if (Math.abs(diffY) > minSwipeDistance) {
+                        if (diffY > 0) {
+                            this.move('down');
+                        } else {
+                            this.move('up');
+                        }
+                    }
+                }
+            }, { passive: true });
         }
-        
+
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                GameControlModule.startGame();
+            });
+        }
+
+        const pauseBtn = document.getElementById('pause-btn');
         if (pauseBtn) {
             pauseBtn.addEventListener('click', () => {
                 if (GameControlModule.isPaused) {
@@ -782,7 +1071,8 @@ const GameCore = {
                 }
             });
         }
-        
+
+        const restartBtn = document.getElementById('restart-btn');
         if (restartBtn) {
             restartBtn.addEventListener('click', () => {
                 if (confirm('确定要重新开始游戏吗？当前进度将丢失。')) {
@@ -790,31 +1080,54 @@ const GameCore = {
                 }
             });
         }
-        
-        if (screenshotBtn) {
-            screenshotBtn.addEventListener('click', () => GameCore.takeScreenshot());
-        }
-        
-        if (leaderboardBtn) {
-            leaderboardBtn.addEventListener('click', () => LeaderboardModule.showLeaderboard());
-        }
-        
+
+        const playAgainBtn = document.getElementById('play-again-btn');
         if (playAgainBtn) {
             playAgainBtn.addEventListener('click', () => {
                 GameControlModule.restartGame();
             });
         }
-        
+
+        const resumePauseBtn = document.getElementById('resume-pause-btn');
         if (resumePauseBtn) {
-            resumePauseBtn.addEventListener('click', () => GameControlModule.resumeGame());
+            resumePauseBtn.addEventListener('click', () => {
+                GameControlModule.resumeGame();
+            });
         }
-        
-        if (closeLeaderboardBtn) {
-            closeLeaderboardBtn.addEventListener('click', () => LeaderboardModule.hideLeaderboard());
+
+        const leaderboardBtn = document.getElementById('leaderboard-btn');
+        if (leaderboardBtn) {
+            leaderboardBtn.addEventListener('click', () => {
+                LeaderboardModule.showLeaderboard();
+            });
         }
-        
-        if (clearLeaderboardBtn) {
-            clearLeaderboardBtn.addEventListener('click', () => LeaderboardModule.clearLeaderboard());
+
+        const closeLeaderboard = document.getElementById('close-leaderboard');
+        if (closeLeaderboard) {
+            closeLeaderboard.addEventListener('click', () => {
+                LeaderboardModule.hideLeaderboard();
+            });
+        }
+
+        const clearLeaderboard = document.getElementById('clear-leaderboard');
+        if (clearLeaderboard) {
+            clearLeaderboard.addEventListener('click', () => {
+                LeaderboardModule.clearLeaderboard();
+            });
+        }
+
+        const audioToggle = document.getElementById('audio-toggle');
+        if (audioToggle) {
+            audioToggle.addEventListener('click', () => {
+                AudioModule.toggle();
+            });
+        }
+
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                ThemeModule.toggle();
+            });
         }
 
         const leaderboardModal = document.getElementById('leaderboard-modal');
@@ -825,121 +1138,11 @@ const GameCore = {
                 }
             });
         }
-    },
-
-    handleKeyDown(event) {
-        if (!GameControlModule.isRunning || GameControlModule.isPaused) return;
-
-        switch (event.key) {
-            case 'ArrowUp':
-                event.preventDefault();
-                this.handleMove('up');
-                break;
-            case 'ArrowDown':
-                event.preventDefault();
-                this.handleMove('down');
-                break;
-            case 'ArrowLeft':
-                event.preventDefault();
-                this.handleMove('left');
-                break;
-            case 'ArrowRight':
-                event.preventDefault();
-                this.handleMove('right');
-                break;
-        }
-    },
-
-    touchStartX: 0,
-    touchStartY: 0,
-
-    handleTouchStart(event) {
-        this.touchStartX = event.touches[0].clientX;
-        this.touchStartY = event.touches[0].clientY;
-    },
-
-    handleTouchEnd(event) {
-        if (!GameControlModule.isRunning || GameControlModule.isPaused) return;
-
-        const touchEndX = event.changedTouches[0].clientX;
-        const touchEndY = event.changedTouches[0].clientY;
-        
-        const deltaX = touchEndX - this.touchStartX;
-        const deltaY = touchEndY - this.touchStartY;
-        
-        const minSwipeDistance = 30;
-        
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            if (Math.abs(deltaX) > minSwipeDistance) {
-                this.handleMove(deltaX > 0 ? 'right' : 'left');
-            }
-        } else {
-            if (Math.abs(deltaY) > minSwipeDistance) {
-                this.handleMove(deltaY > 0 ? 'down' : 'up');
-            }
-        }
-    },
-
-    takeScreenshot() {
-        try {
-            const gameContainer = document.querySelector('.game-container');
-            
-            const canvas = document.createElement('canvas');
-            const ratio = 2;
-            const rect = gameContainer.getBoundingClientRect();
-            
-            canvas.width = rect.width * ratio;
-            canvas.height = rect.height * ratio;
-            const ctx = canvas.getContext('2d');
-            
-            ctx.scale(ratio, ratio);
-            
-            const originalColors = {
-                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            };
-            
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, rect.width, rect.height);
-            
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = rect.width;
-            tempCanvas.height = rect.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            const fontSize = 48;
-            tempCtx.fillStyle = '#bbada0';
-            tempCtx.fillRect(0, 0, rect.width, rect.height);
-            
-            const gradient = tempCtx.createLinearGradient(0, 0, rect.width, rect.height);
-            gradient.addColorStop(0, '#667eea');
-            gradient.addColorStop(1, '#764ba2');
-            
-            const link = document.createElement('a');
-            link.download = `2048-game-${Date.now()}.png`;
-            
-            const screenshotText = `2048 Game Screenshot\nScore: ${ScoreModule.score}\nBest: ${ScoreModule.bestScore}\nDate: ${new Date().toLocaleDateString('zh-CN')}`;
-            
-            const blob = new Blob([screenshotText], { type: 'text/plain' });
-            link.href = URL.createObjectURL(blob);
-            
-            const fileName = `2048-game-screenshot.txt`;
-            link.download = fileName;
-            link.textContent = '下载截图';
-            
-            alert('📷 截图功能需要引入外部库（如 html2canvas）才能完美实现！\n\n您可以使用浏览器自带的截图工具进行截图！\n\n当前已自动为您保存了游戏状态记录！');
-            
-            link.click();
-            URL.revokeObjectURL(link.href);
-            
-        } catch (error) {
-            console.error('截图失败:', error);
-            alert('截图功能暂时不可用，请使用浏览器自带的截图功能！');
-        }
     }
 };
 
 // ========================================
-// 游戏初始化
+// 初始化游戏
 // ========================================
 document.addEventListener('DOMContentLoaded', () => {
     GameCore.init();

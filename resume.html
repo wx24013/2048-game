@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>个人简历 - 2048 游戏开发者</title>
+    <title>个人简历 - 汪翔</title>
     <style>
         * {
             margin: 0;
@@ -25,7 +25,7 @@
         }
 
         .resume-container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             background: #fff;
             border-radius: 15px;
@@ -36,37 +36,41 @@
         .resume-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 40px 30px;
-            text-align: center;
-            color: white;
+            display: flex;
+            align-items: center;
+            gap: 30px;
         }
 
         .avatar {
-            width: 150px;
-            height: 150px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             border: 4px solid rgba(255, 255, 255, 0.5);
-            margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+
+        .header-info {
+            flex: 1;
+            color: white;
         }
 
         .name {
             font-size: 36px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-        }
-
-        .title {
-            font-size: 18px;
-            opacity: 0.9;
-            margin-bottom: 20px;
         }
 
         .contact-info {
             display: flex;
-            justify-content: center;
-            gap: 30px;
             flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
         }
 
         .contact-item {
@@ -74,7 +78,15 @@
             align-items: center;
             gap: 8px;
             font-size: 14px;
-            opacity: 0.9;
+        }
+
+        .contact-item a {
+            color: white;
+            text-decoration: none;
+        }
+
+        .contact-item a:hover {
+            text-decoration: underline;
         }
 
         .resume-content {
@@ -91,59 +103,93 @@
             color: #667eea;
             margin-bottom: 15px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
+            border-bottom: 3px solid #667eea;
             display: flex;
             align-items: center;
             gap: 10px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 8px;
         }
 
-        .section-title::before {
-            content: '';
-            width: 8px;
-            height: 22px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 4px;
-        }
-
-        .education-item, .project-item {
+        .education-item, .work-item, .project-item {
             margin-bottom: 20px;
-            padding: 15px;
+            padding: 20px;
             background: #f8f9fa;
             border-radius: 10px;
             border-left: 4px solid #667eea;
         }
 
-        .education-item:last-child, .project-item:last-child {
-            margin-bottom: 0;
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .item-title {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 5px;
+        }
+
+        .item-date {
+            font-size: 14px;
+            color: #666;
         }
 
         .item-subtitle {
-            font-size: 14px;
+            font-size: 15px;
             color: #666;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .item-description {
             font-size: 14px;
             color: #555;
-            line-height: 1.6;
+            line-height: 1.8;
+        }
+
+        .item-description ul {
+            margin-top: 10px;
+            margin-left: 20px;
+        }
+
+        .item-description li {
+            margin-bottom: 8px;
         }
 
         .skills-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
+        }
+
+        .skill-category {
+            flex: 1 1 300px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .skill-category-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .skill-tag {
-            padding: 8px 16px;
+            padding: 6px 14px;
             background: linear-gradient(135deg, #e8eaf6, #e1bee7);
             border-radius: 20px;
             font-size: 14px;
@@ -168,7 +214,7 @@
         }
 
         .back-btn:hover {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
         }
 
@@ -178,12 +224,8 @@
 
         @media (max-width: 600px) {
             .resume-header {
-                padding: 30px 20px;
-            }
-
-            .avatar {
-                width: 120px;
-                height: 120px;
+                flex-direction: column;
+                text-align: center;
             }
 
             .name {
@@ -191,15 +233,15 @@
             }
 
             .contact-info {
-                gap: 15px;
+                justify-content: center;
             }
 
             .resume-content {
                 padding: 20px;
             }
 
-            .section-title {
-                font-size: 18px;
+            .item-header {
+                flex-direction: column;
             }
         }
     </style>
@@ -207,76 +249,128 @@
 <body>
     <div class="resume-container">
         <div class="resume-header">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="头像" class="avatar">
-            <h1 class="name">张三</h1>
-            <p class="title">Web 前端开发者 | 游戏爱好者</p>
-            <div class="contact-info">
-                <div class="contact-item">📧 zhangsan@example.com</div>
-                <div class="contact-item">📱 138-0000-0000</div>
-                <div class="contact-item">📍 北京市</div>
+            <div class="avatar">👨‍💻</div>
+            <div class="header-info">
+                <h1 class="name">汪翔</h1>
+                <div class="contact-info">
+                    <div class="contact-item">📞 19805935257</div>
+                    <div class="contact-item">📧 <a href="mailto:2908644258@qq.com">2908644258@qq.com</a></div>
+                    <div class="contact-item">🎓 应届毕业生</div>
+                    <div class="contact-item">💼 移动端开发</div>
+                    <div class="contact-item">📍 深圳</div>
+                    <div class="contact-item">💰 1w</div>
+                </div>
+                <div class="contact-info">
+                    <div class="contact-item">🎓 大专专科</div>
+                    <div class="contact-item">🔗 <a href="https://github.com/wx24013" target="_blank">https://github.com/wx24013</a></div>
+                </div>
             </div>
         </div>
 
         <div class="resume-content">
             <div class="section">
-                <h2 class="section-title">教育背景</h2>
+                <h2 class="section-title">📚 教育经历</h2>
                 <div class="education-item">
-                    <div class="item-title">本科 - 计算机科学与技术</div>
-                    <div class="item-subtitle">某大学 | 2020 - 2024</div>
-                    <div class="item-description">主修课程：数据结构、算法设计、计算机网络、操作系统、软件工程</div>
+                    <div class="item-header">
+                        <div class="item-title">福州软件职业技术学院</div>
+                        <div class="item-date">2020-09 ~ 2027-06</div>
+                    </div>
+                    <div class="item-subtitle">人工智能技术应用 · 大专 · 全日制 · 智能产业学院 · 福州</div>
+                    <div class="item-description">
+                        <strong>主修课程：</strong>移动应用开发、Java程序设计、数据结构、数据库原理<br>
+                        <strong>获奖情况：</strong>连续三年获得校级奖学金，专业排名前20%
+                    </div>
                 </div>
             </div>
 
             <div class="section">
-                <h2 class="section-title">专业技能</h2>
+                <h2 class="section-title">💪 专业技能</h2>
                 <div class="skills-container">
-                    <span class="skill-tag">HTML5/CSS3</span>
-                    <span class="skill-tag">JavaScript (ES6+)</span>
-                    <span class="skill-tag">React/Vue</span>
-                    <span class="skill-tag">TypeScript</span>
-                    <span class="skill-tag">Webpack/Vite</span>
-                    <span class="skill-tag">Git</span>
-                    <span class="skill-tag">Node.js</span>
-                    <span class="skill-tag">Web Audio API</span>
+                    <div class="skill-category">
+                        <div class="skill-category-title">移动端开发</div>
+                        <div class="skill-tags">
+                            <span class="skill-tag">Android Studio</span>
+                            <span class="skill-tag">Java</span>
+                            <span class="skill-tag">Kotlin</span>
+                            <span class="skill-tag">Swift</span>
+                            <span class="skill-tag">Flutter</span>
+                        </div>
+                    </div>
+                    <div class="skill-category">
+                        <div class="skill-category-title">后端基础</div>
+                        <div class="skill-tags">
+                            <span class="skill-tag">Spring Boot</span>
+                            <span class="skill-tag">MyBatis</span>
+                            <span class="skill-tag">RESTful API</span>
+                        </div>
+                    </div>
+                    <div class="skill-category">
+                        <div class="skill-category-title">数据库</div>
+                        <div class="skill-tags">
+                            <span class="skill-tag">MySQL</span>
+                            <span class="skill-tag">SQLite</span>
+                            <span class="skill-tag">Redis</span>
+                        </div>
+                    </div>
+                    <div class="skill-category">
+                        <div class="skill-category-title">版本控制</div>
+                        <div class="skill-tags">
+                            <span class="skill-tag">Git</span>
+                            <span class="skill-tag">GitHub</span>
+                            <span class="skill-tag">Git Flow</span>
+                        </div>
+                    </div>
+                    <div class="skill-category">
+                        <div class="skill-category-title">其他</div>
+                        <div class="skill-tags">
+                            <span class="skill-tag">HTTP/HTTPS</span>
+                            <span class="skill-tag">JSON</span>
+                            <span class="skill-tag">Postman</span>
+                            <span class="skill-tag">设计模式</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div class="section">
-                <h2 class="section-title">项目经验</h2>
-                <div class="project-item">
-                    <div class="item-title">2048 游戏完整版</div>
-                    <div class="item-subtitle">个人项目 | 2024</div>
-                    <div class="item-description">
-                        • 使用原生 JavaScript 实现游戏核心逻辑<br>
-                        • 支持三种难度模式（3×3、4×4、5×5）<br>
-                        • 实现主题切换、音效系统、排行榜功能<br>
-                        • 支持键盘和触屏操作，响应式设计
+                <h2 class="section-title">💼 工作经历</h2>
+                <div class="work-item">
+                    <div class="item-header">
+                        <div class="item-title">鱼互联网有限公司</div>
+                        <div class="item-date">2023-02 ~ 2023-04</div>
                     </div>
-                </div>
-                <div class="project-item">
-                    <div class="item-title">个人博客系统</div>
-                    <div class="item-subtitle">个人项目 | 2023</div>
+                    <div class="item-subtitle">创新业务部 · 全栈开发 · 福州</div>
                     <div class="item-description">
-                        • 使用 Vue3 + Vite 构建单页应用<br>
-                        • 支持 Markdown 编辑和预览<br>
-                        • 本地存储文章数据
+                        <ul>
+                            <li><strong>移动端接口开发：</strong>参与公司内部工具 App 的后端 API 设计，独立完成 3 个核心模块（用户认证、数据看板、消息推送），接口响应时间 ≤200ms。</li>
+                            <li><strong>前端页面联调：</strong>协助移动端同事进行接口调试，利用 Postman 编写自动化测试脚本，减少 30% 联调时间。</li>
+                            <li><strong>文档与规范：</strong>撰写接口文档 12 篇，并推动团队引入 Git Flow 分支管理，提升协作效率。</li>
+                        </ul>
                     </div>
                 </div>
             </div>
 
             <div class="section">
-                <h2 class="section-title">获奖情况</h2>
-                <div class="education-item">
-                    <div class="item-title">校级程序设计竞赛三等奖</div>
-                    <div class="item-subtitle">2022</div>
-                </div>
-                <div class="education-item">
-                    <div class="item-title">优秀学生奖学金</div>
-                    <div class="item-subtitle">2021 - 2022 学年</div>
+                <h2 class="section-title">🚀 项目经历</h2>
+                <div class="project-item">
+                    <div class="item-header">
+                        <div class="item-title">2048 游戏 - 完整版</div>
+                        <div class="item-date">2024-05 ~ 2024-06</div>
+                    </div>
+                    <div class="item-subtitle">Web 游戏开发 · <a href="https://wx24013.github.io/2048-game/" target="_blank" style="color: #667eea;">在线体验</a></div>
+                    <div class="item-description">
+                        <ul>
+                            <li><strong>核心功能开发：</strong>使用原生 JavaScript 实现游戏核心逻辑，支持键盘和触屏双端操作，实现三种难度模式（5×5 简单、4×4 普通、3×3 困难）。</li>
+                            <li><strong>主题与音效：</strong>实现经典/暗夜主题切换功能，使用 Web Audio API 开发音效系统，包含移动、合并、胜利、失败等多种音效。</li>
+                            <li><strong>数据系统：</strong>设计并实现排行榜系统，支持玩家昵称、按分数/时间排序、难度筛选；实现成就系统，包含首次通关、满分挑战、速度之王三个成就。</li>
+                            <li><strong>分享与导出：</strong>开发成绩分享功能，支持一键复制分享文本到剪贴板。</li>
+                            <li><strong>响应式设计：</strong>使用 CSS3 动画实现加载画面、成就通知、方块合并动画等视觉效果，适配移动端和桌面端。</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
-            <button class="back-btn" onclick="goBack()">🔙 返回游戏</button>
+            <button class="back-btn" onclick="goBack()">🎮 返回游戏</button>
         </div>
     </div>
 

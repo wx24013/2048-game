@@ -112,8 +112,7 @@ body.theme-dark .icon-btn { background: rgba(45,45,68,0.9); border: 2px solid rg
 body.theme-dark .icon-btn:hover { background: rgba(45,45,68,1); transform: scale(1.1); box-shadow: 0 6px 20px rgba(138,43,226,0.4); }
 
 .header {
-    display: flex;
-    justify-content: space-between;
+    display: flex;\n    justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 15px;
     flex-wrap: wrap;
@@ -276,8 +275,6 @@ body.theme-dark .icon-btn:hover { background: rgba(45,45,68,1); transform: scale
     gap: 10px;
     padding: 10px;
     border-radius: 6px;
-    width: 320px;
-    height: 320px;
     touch-action: none;
     transition: background 0.3s ease;
 }
@@ -287,7 +284,6 @@ body.theme-dark .icon-btn:hover { background: rgba(45,45,68,1); transform: scale
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 32px;
     font-weight: bold;
     transition: all 0.15s ease;
     user-select: none;
@@ -299,12 +295,12 @@ body.theme-dark .icon-btn:hover { background: rgba(45,45,68,1); transform: scale
 .cell-16 { background: #f59563; color: #f9f6f2; }
 .cell-32 { background: #f67c5f; color: #f9f6f2; }
 .cell-64 { background: #f65e3b; color: #f9f6f2; }
-.cell-128 { background: #edcf72; color: #f9f6f2; font-size: 28px; }
-.cell-256 { background: #edcc61; color: #f9f6f2; font-size: 28px; }
-.cell-512 { background: #edc850; color: #f9f6f2; font-size: 28px; }
-.cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 24px; }
-.cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 24px; box-shadow: 0 0 30px rgba(237,194,46,0.5); }
-.cell-super { background: #3c3a32; color: #f9f6f2; font-size: 20px; }
+.cell-128 { background: #edcf72; color: #f9f6f2; }
+.cell-256 { background: #edcc61; color: #f9f6f2; }
+.cell-512 { background: #edc850; color: #f9f6f2; }
+.cell-1024 { background: #edc53f; color: #f9f6f2; }
+.cell-2048 { background: #edc22e; color: #f9f6f2; }
+.cell-super { background: #3c3a32; color: #f9f6f2; }
 
 .cell-new { animation: appear 0.2s ease; }
 .cell-merged { animation: pop 0.2s ease; }
@@ -476,10 +472,6 @@ body.theme-dark .icon-btn:hover { background: rgba(45,45,68,1); transform: scale
 .resume-btn:hover { background: #4169e1; transform: scale(1.05); }
 
 @media (max-width:500px) {
-    .game-board { width: 280px; height: 280px; }
-    .cell { font-size: 28px; }
-    .cell-128,.cell-256,.cell-512 { font-size: 24px; }
-    .cell-1024,.cell-2048 { font-size: 20px; }
     .title { font-size: 40px; }
     .score-container { gap: 5px; }
     .score-box { min-width: 70px; padding: 6px 10px; }
@@ -497,10 +489,6 @@ body.theme-dark .icon-btn:hover { background: rgba(45,45,68,1); transform: scale
     .difficulty-select { font-size: 12px; padding: 4px 8px; min-width: 100px; }
     .game-controls { grid-template-columns: repeat(3,1fr); gap: 6px; }
     .control-btn { padding: 10px; font-size: 14px; }
-    .game-board { width: 260px; height: 260px; gap: 8px; padding: 8px; }
-    .cell { font-size: 24px; }
-    .cell-128,.cell-256,.cell-512 { font-size: 20px; }
-    .cell-1024,.cell-2048,.cell-super { font-size: 16px; }
     .instructions { font-size: 12px; }
     .leaderboard-item { grid-template-columns: 0.5fr 1fr 1fr 1.5fr; font-size: 12px; gap: 5px; }
     .game-over-content { padding: 20px; }

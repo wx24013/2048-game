@@ -1,1 +1,1113 @@
-// ========================================\n// 存储模块 - 负责localStorage操作\n// ========================================\nconst StorageModule = {\n    STORAGE_KEYS: {\n        BEST_SCORE: '2048_best_score',\n        LEADERBOARD: '2048_leaderboard',\n        TOTAL_GAMES: '2048_total_games',\n        AUDIO_ENABLED: '2048_audio_enabled',\n        THEME: '2048_theme'\n    },\n\n    saveBestScore(score) {\n        try {\n            localStorage.setItem(this.STORAGE_KEYS.BEST_SCORE, score.toString());\n        } catch (e) {\n            console.error('保存最高分失败:', e);\n        }\n    },\n\n    getBestScore() {\n        try {\n            const score = localStorage.getItem(this.STORAGE_KEYS.BEST_SCORE);\n            return score ? parseInt(score, 10) : 0;\n        } catch (e) {\n            console.error('读取最高分失败:', e);\n            return 0;\n        }\n    },\n\n    saveLeaderboard(records) {\n        try {\n            localStorage.setItem(this.STORAGE_KEYS.LEADERBOARD, JSON.stringify(records));\n        } catch (e) {\n            console.error('保存排行榜失败:', e);\n        }\n    },\n\n    getLeaderboard() {\n        try {\n            const data = localStorage.getItem(this.STORAGE_KEYS.LEADERBOARD);\n            return data ? JSON.parse(data) : [];\n        } catch (e) {\n            console.error('读取排行榜失败:', e);\n            return [];\n        }\n    },\n\n    addLeaderboardRecord(score, difficulty) {\n        const records = this.getLeaderboard();\n        const record = {\n            score: score,\n            difficulty: difficulty,\n            date: new Date().toLocaleString('zh-CN'),\n            timestamp: Date.now()\n        };\n        records.push(record);\n        records.sort((a, b) => b.score - a.score);\n        if (records.length > 100) {\n            records.length = 100;\n        }\n        this.saveLeaderboard(records);\n    },\n\n    clearLeaderboard() {\n        try {\n            localStorage.removeItem(this.STORAGE_KEYS.LEADERBOARD);\n            localStorage.removeItem(this.STORAGE_KEYS.TOTAL_GAMES);\n        } catch (e) {\n            console.error('清空排行榜失败:', e);\n        }\n    },\n\n    getTotalGames() {\n        try {\n            const count = localStorage.getItem(this.STORAGE_KEYS.TOTAL_GAMES);\n            return count ? parseInt(count, 10) : 0;\n        } catch (e) {\n            console.error('读取总局数失败:', e);\n            return 0;\n        }\n    },\n\n    incrementTotalGames() {\n        try {\n            const current = this.getTotalGames();\n            localStorage.setItem(this.STORAGE_KEYS.TOTAL_GAMES, (current + 1).toString());\n        } catch (e) {\n            console.error('增加总局数失败:', e);\n        }\n    },\n\n    saveAudioEnabled(enabled) {\n        try {\n            localStorage.setItem(this.STORAGE_KEYS.AUDIO_ENABLED, enabled.toString());\n        } catch (e) {\n            console.error('保存音效设置失败:', e);\n        }\n    },\n\n    getAudioEnabled() {\n        try {\n            const enabled = localStorage.getItem(this.STORAGE_KEYS.AUDIO_ENABLED);\n            return enabled === null ? true : enabled === 'true';\n        } catch (e) {\n            console.error('读取音效设置失败:', e);\n            return true;\n        }\n    },\n\n    saveTheme(theme) {\n        try {\n            localStorage.setItem(this.STORAGE_KEYS.THEME, theme);\n        } catch (e) {\n            console.error('保存主题设置失败:', e);\n        }\n    },\n\n    getTheme() {\n        try {\n            const theme = localStorage.getItem(this.STORAGE_KEYS.THEME);\n            return theme || 'classic';\n        } catch (e) {\n            console.error('读取主题设置失败:', e);\n            return 'classic';\n        }\n    }\n};\n\n// ========================================\n// 音效模块 - 使用Web Audio API实现音效\n// ========================================\nconst AudioModule = {\n    audioContext: null,\n    enabled: true,\n    sounds: {},\n\n    init() {\n        this.enabled = StorageModule.getAudioEnabled();\n        this.createSounds();\n        this.updateButtonDisplay();\n    },\n\n    createSounds() {\n        try {\n            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();\n            \n            this.sounds = {\n                move: () => this.playMoveSound(),\n                merge: () => this.playMergeSound(),\n                newTile: () => this.playNewTileSound(),\n                win: () => this.playWinSound(),\n                gameOver: () => this.playGameOverSound()\n            };\n        } catch (e) {\n            console.error('Web Audio API不可用:', e);\n        }\n    },\n\n    ensureContext() {\n        if (!this.audioContext) {\n            this.createSounds();\n        }\n        if (this.audioContext && this.audioContext.state === 'suspended') {\n            this.audioContext.resume();\n        }\n    },\n\n    playMoveSound() {\n        if (!this.enabled) return;\n        this.ensureContext();\n        \n        try {\n            const oscillator = this.audioContext.createOscillator();\n            const gainNode = this.audioContext.createGain();\n            \n            oscillator.connect(gainNode);\n            gainNode.connect(this.audioContext.destination);\n            \n            oscillator.frequency.value = 200;\n            oscillator.type = 'sine';\n            \n            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);\n            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);\n            \n            oscillator.start(this.audioContext.currentTime);\n            oscillator.stop(this.audioContext.currentTime + 0.1);\n        } catch (e) {\n            console.error('播放移动音效失败:', e);\n        }\n    },\n\n    playMergeSound() {\n        if (!this.enabled) return;\n        this.ensureContext();\n        \n        try {\n            const oscillator = this.audioContext.createOscillator();\n            const gainNode = this.audioContext.createGain();\n            \n            oscillator.connect(gainNode);\n            gainNode.connect(this.audioContext.destination);\n            \n            oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);\n            oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.1);\n            oscillator.type = 'square';\n            \n            gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);\n            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);\n            \n            oscillator.start(this.audioContext.currentTime);\n            oscillator.stop(this.audioContext.currentTime + 0.15);\n        } catch (e) {\n            console.error('播放合并音效失败:', e);\n        }\n    },\n\n    playNewTileSound() {\n        if (!this.enabled) return;\n        this.ensureContext();\n        \n        try {\n            const oscillator = this.audioContext.createOscillator();\n            const gainNode = this.audioContext.createGain();\n            \n            oscillator.connect(gainNode);\n            gainNode.connect(this.audioContext.destination);\n            \n            oscillator.frequency.value = 600;\n            oscillator.type = 'sine';\n            \n            gainNode.gain.setValueAtTime(0.08, this.audioContext.currentTime);\n            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);\n            \n            oscillator.start(this.audioContext.currentTime);\n            oscillator.stop(this.audioContext.currentTime + 0.05);\n        } catch (e) {\n            console.error('播放新方块音效失败:', e);\n        }\n    },\n\n    playWinSound() {\n        if (!this.enabled) return;\n        this.ensureContext();\n        \n        try {\n            const notes = [523.25, 659.25, 783.99, 1046.50];\n            notes.forEach((freq, index) => {\n                setTimeout(() => {\n                    const oscillator = this.audioContext.createOscillator();\n                    const gainNode = this.audioContext.createGain();\n                    \n                    oscillator.connect(gainNode);\n                    gainNode.connect(this.audioContext.destination);\n                    \n                    oscillator.frequency.value = freq;\n                    oscillator.type = 'sine';\n                    \n                    gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);\n                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);\n                    \n                    oscillator.start(this.audioContext.currentTime);\n                    oscillator.stop(this.audioContext.currentTime + 0.3);\n                }, index * 150);\n            });\n        } catch (e) {\n            console.error('播放胜利音效失败:', e);\n        }\n    },\n\n    playGameOverSound() {\n        if (!this.enabled) return;\n        this.ensureContext();\n        \n        try {\n            const notes = [392, 349.23, 329.63, 293.66];\n            notes.forEach((freq, index) => {\n                setTimeout(() => {\n                    const oscillator = this.audioContext.createOscillator();\n                    const gainNode = this.audioContext.createGain();\n                    \n                    oscillator.connect(gainNode);\n                    gainNode.connect(this.audioContext.destination);\n                    \n                    oscillator.frequency.value = freq;\n                    oscillator.type = 'sawtooth';\n                    \n                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);\n                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);\n                    \n                    oscillator.start(this.audioContext.currentTime);\n                    oscillator.stop(this.audioContext.currentTime + 0.4);\n                }, index * 200);\n            });\n        } catch (e) {\n            console.error('播放游戏结束音效失败:', e);\n        }\n    },\n\n    play(type) {\n        if (this.sounds[type]) {\n            this.sounds[type]();\n        }\n    },\n\n    toggle() {\n        this.ensureContext();\n        this.enabled = !this.enabled;\n        StorageModule.saveAudioEnabled(this.enabled);\n        this.updateButtonDisplay();\n    },\n\n    updateButtonDisplay() {\n        const button = document.getElementById('audio-toggle');\n        if (button) {\n            button.textContent = this.enabled ? '🔊' : '🔇';\n            button.title = this.enabled ? '音效已开启' : '音效已关闭';\n        }\n    }\n};\n\n// ========================================\n// 主题模块 - 管理主题切换\n// ========================================\nconst ThemeModule = {\n    currentTheme: 'classic',\n\n    init() {\n        this.currentTheme = StorageModule.getTheme();\n        this.applyTheme();\n        this.updateButtonDisplay();\n    },\n\n    toggle() {\n        this.currentTheme = this.currentTheme === 'classic' ? 'dark' : 'classic';\n        StorageModule.saveTheme(this.currentTheme);\n        this.applyTheme();\n        this.updateButtonDisplay();\n    },\n\n    applyTheme() {\n        document.body.classList.remove('theme-classic', 'theme-dark');\n        document.body.classList.add(`theme-${this.currentTheme}`);\n    },\n\n    updateButtonDisplay() {\n        const button = document.getElementById('theme-toggle');\n        if (button) {\n            button.textContent = this.currentTheme === 'classic' ? '🌙' : '☀️';\n            button.title = this.currentTheme === 'classic' ? '切换到暗夜主题' : '切换到经典主题';\n        }\n    }\n};\n\n// ========================================\n// 计分模块 - 负责分数管理和动画\n// ========================================\nconst ScoreModule = {\n    score: 0,\n    bestScore: 0,\n    lastAddedScore: 0,\n\n    init() {\n        this.bestScore = StorageModule.getBestScore();\n        this.updateDisplay();\n    },\n\n    addScore(points) {\n        this.score += points;\n        this.lastAddedScore = points;\n        \n        if (this.score > this.bestScore) {\n            this.bestScore = this.score;\n            StorageModule.saveBestScore(this.bestScore);\n        }\n        \n        this.updateDisplay();\n    },\n\n    resetScore() {\n        this.score = 0;\n        this.lastAddedScore = 0;\n        this.updateDisplay();\n    },\n\n    updateDisplay() {\n        const scoreElement = document.getElementById('score');\n        const bestScoreElement = document.getElementById('best-score');\n        \n        if (scoreElement) {\n            scoreElement.textContent = this.score;\n        }\n        if (bestScoreElement) {\n            bestScoreElement.textContent = this.bestScore;\n        }\n    },\n\n    getScore() {\n        return this.score;\n    },\n\n    getBestScore() {\n        return this.bestScore;\n    }\n};\n\n// ========================================\n// 动画模块 - 负责各种动画效果\n// ========================================\nconst AnimationModule = {\n    showScorePopup(points, position) {\n        const container = document.getElementById('score-popup-container');\n        if (!container) return;\n\n        const popup = document.createElement('div');\n        popup.className = 'score-popup';\n        popup.textContent = '+' + points;\n        \n        popup.style.left = position.x + 'px';\n        popup.style.top = position.y + 'px';\n        \n        container.appendChild(popup);\n\n        setTimeout(() => {\n            if (popup.parentNode) {\n                popup.parentNode.removeChild(popup);\n            }\n        }, 1000);\n    },\n\n    animateNewTile(cellElement) {\n        if (!cellElement) return;\n        cellElement.classList.add('cell-new');\n        setTimeout(() => {\n            cellElement.classList.remove('cell-new');\n        }, 200);\n        AudioModule.play('newTile');\n    },\n\n    animateMergedTile(cellElement) {\n        if (!cellElement) return;\n        cellElement.classList.add('cell-merged');\n        setTimeout(() => {\n            cellElement.classList.remove('cell-merged');\n        }, 200);\n    }\n};\n\n// ========================================\n// 排行榜模块 - 负责排行榜UI和数据管理\n// ========================================\nconst LeaderboardModule = {\n    showLeaderboard() {\n        const modal = document.getElementById('leaderboard-modal');\n        if (modal) {\n            modal.classList.add('show');\n            this.updateLeaderboardDisplay();\n        }\n    },\n\n    hideLeaderboard() {\n        const modal = document.getElementById('leaderboard-modal');\n        if (modal) {\n            modal.classList.remove('show');\n        }\n    },\n\n    updateLeaderboardDisplay() {\n        const recordsContainer = document.getElementById('leaderboard-records');\n        const totalGamesElement = document.getElementById('total-games');\n        \n        if (!recordsContainer) return;\n\n        const records = StorageModule.getLeaderboard();\n        const top10 = records.slice(0, 10);\n        const totalGames = StorageModule.getTotalGames();\n\n        if (totalGamesElement) {\n            totalGamesElement.textContent = totalGames;\n        }\n\n        recordsContainer.innerHTML = '';\n\n        if (top10.length === 0) {\n            recordsContainer.innerHTML = '<div class=\"leaderboard-item\" style=\"justify-content: center;\">暂无记录</div>';\n            return;\n        }\n\n        top10.forEach((record, index) => {\n            const item = document.createElement('div');\n            item.className = 'leaderboard-item';\n            \n            let difficultyName = '';\n            switch (record.difficulty) {\n                case 'easy':\n                    difficultyName = '简单';\n                    break;\n                case 'hard':\n                    difficultyName = '困难';\n                    break;\n                default:\n                    difficultyName = '普通';\n            }\n\n            item.innerHTML = `\n                <span>第${index + 1}名</span>\n                <span>${record.score}</span>\n                <span>${difficultyName}</span>\n                <span>${record.date}</span>\n            `;\n            recordsContainer.appendChild(item);\n        });\n    },\n\n    clearLeaderboard() {\n        if (confirm('确定要清空所有排行榜记录吗？')) {\n            StorageModule.clearLeaderboard();\n            this.updateLeaderboardDisplay();\n        }\n    }\n};\n\n// ========================================\n// 游戏控制模块 - 负责游戏流程控制\n// ========================================\nconst GameControlModule = {\n    isRunning: false,\n    isPaused: false,\n\n    startGame() {\n        this.isRunning = true;\n        this.isPaused = false;\n        \n        StorageModule.incrementTotalGames();\n        \n        GameCore.initGame();\n        \n        this.updateButtonStates();\n    },\n\n    pauseGame() {\n        if (!this.isRunning || this.isPaused) return;\n        \n        this.isPaused = true;\n        const pauseOverlay = document.getElementById('pause-overlay');\n        if (pauseOverlay) {\n            pauseOverlay.classList.add('show');\n        }\n        \n        this.updateButtonStates();\n    },\n\n    resumeGame() {\n        if (!this.isRunning || !this.isPaused) return;\n        \n        this.isPaused = false;\n        const pauseOverlay = document.getElementById('pause-overlay');\n        if (pauseOverlay) {\n            pauseOverlay.classList.remove('show');\n        }\n        \n        this.updateButtonStates();\n    },\n\n    restartGame() {\n        ScoreModule.resetScore();\n        \n        GameCore.initGame();\n        \n        this.isRunning = true;\n        this.isPaused = false;\n        \n        const pauseOverlay = document.getElementById('pause-overlay');\n        if (pauseOverlay) {\n            pauseOverlay.classList.remove('show');\n        }\n        \n        this.updateButtonStates();\n    },\n\n    updateButtonStates() {\n        const startBtn = document.getElementById('start-btn');\n        const pauseBtn = document.getElementById('pause-btn');\n        const restartBtn = document.getElementById('restart-btn');\n\n        if (startBtn) {\n            startBtn.disabled = this.isRunning && !this.isPaused;\n            startBtn.textContent = this.isRunning && !this.isPaused ? '游戏进行中' : '开始游戏';\n        }\n\n        if (pauseBtn) {\n            pauseBtn.disabled = !this.isRunning || this.isPaused;\n            if (this.isPaused) {\n                pauseBtn.textContent = '继续游戏';\n                pauseBtn.classList.add('active');\n            } else {\n                pauseBtn.textContent = '暂停游戏';\n                pauseBtn.classList.remove('active');\n            }\n        }\n    },\n\n    gameOver(isWin) {\n        this.isRunning = false;\n        this.isPaused = false;\n        \n        StorageModule.addLeaderboardRecord(\n            ScoreModule.getScore(),\n            GameCore.currentDifficulty\n        );\n        \n        this.updateButtonStates();\n    }\n};\n\n// ========================================\n// 游戏核心模块 - 游戏主逻辑\n// ========================================\nconst GameCore = {\n    board: [],\n    gridSize: 4,\n    currentDifficulty: 'normal',\n    hasWon: false,\n    gameOver: false,\n    isMoving: false,\n\n    elements: {\n        gameBoard: null,\n        scoreElement: null,\n        bestScoreElement: null,\n        gameOverElement: null,\n        gameOverTitle: null,\n        finalScoreElement: null\n    },\n\n    DIFFICULTY_CONFIG: {\n        easy: 5,\n        normal: 4,\n        hard: 3\n    },\n\n    init() {\n        this.elements.gameBoard = document.getElementById('game-board');\n        this.elements.scoreElement = document.getElementById('score');\n        this.elements.bestScoreElement = document.getElementById('best-score');\n        this.elements.gameOverElement = document.getElementById('game-over');\n        this.elements.gameOverTitle = document.getElementById('game-over-title');\n        this.elements.finalScoreElement = document.getElementById('final-score');\n\n        ScoreModule.init();\n        AudioModule.init();\n        ThemeModule.init();\n\n        this.setupDifficulty();\n        this.initBoardCells();\n        this.initEventListeners();\n        this.resetGameState();\n    },\n\n    setupDifficulty() {\n        const difficultySelect = document.getElementById('difficulty');\n        if (difficultySelect) {\n            this.currentDifficulty = difficultySelect.value;\n            this.gridSize = this.DIFFICULTY_CONFIG[this.currentDifficulty];\n\n            difficultySelect.addEventListener('change', (e) => {\n                this.changeDifficulty(e.target.value);\n            });\n        }\n    },\n\n    changeDifficulty(newDifficulty) {\n        if (this.currentDifficulty === newDifficulty) return;\n\n        this.currentDifficulty = newDifficulty;\n        this.gridSize = this.DIFFICULTY_CONFIG[newDifficulty];\n        \n        GameControlModule.restartGame();\n    },\n\n    initBoardCells() {\n        if (!this.elements.gameBoard) return;\n        \n        this.elements.gameBoard.innerHTML = '';\n        \n        const gridTemplateColumns = `repeat(${this.gridSize}, 1fr)`;\n        this.elements.gameBoard.style.gridTemplateColumns = gridTemplateColumns;\n\n        let boardSize = 320;\n        if (this.gridSize === 5) {\n            boardSize = 360;\n        } else if (this.gridSize === 3) {\n            boardSize = 280;\n        }\n        \n        const gap = 10;\n        const padding = 10;\n        const cellSize = (boardSize - padding * 2 - gap * (this.gridSize - 1)) / this.gridSize;\n\n        for (let i = 0; i < this.gridSize; i++) {\n            for (let j = 0; j < this.gridSize; j++) {\n                const cell = document.createElement('div');\n                cell.className = 'cell';\n                cell.setAttribute('row', i);\n                cell.setAttribute('col', j);\n                cell.style.width = cellSize + 'px';\n                cell.style.height = cellSize + 'px';\n                this.elements.gameBoard.appendChild(cell);\n            }\n        }\n        \n        this.elements.gameBoard.style.width = boardSize + 'px';\n        this.elements.gameBoard.style.height = boardSize + 'px';\n        \n        let cellFontSize = 32;\n        if (this.gridSize === 5) {\n            cellFontSize = 24;\n        } else if (this.gridSize === 3) {\n            cellFontSize = 36;\n        }\n        \n        const cells = document.querySelectorAll('.cell');\n        cells.forEach(cell => {\n            cell.style.fontSize = cellFontSize + 'px';\n        });\n    },\n\n    resetGameState() {\n        this.board = [];\n        for (let i = 0; i < this.gridSize; i++) {\n            this.board[i] = [];\n            for (let j = 0; j < this.gridSize; j++) {\n                this.board[i][j] = 0;\n            }\n        }\n        \n        this.hasWon = false;\n        this.gameOver = false;\n        this.isMoving = false;\n    },\n\n    initGame() {\n        this.resetGameState();\n        this.initBoardCells();\n\n        if (this.elements.gameOverElement) {\n            this.elements.gameOverElement.classList.remove('show');\n        }\n\n        this.addRandomTile();\n        this.addRandomTile();\n\n        this.updateDisplay();\n    },\n\n    addRandomTile() {\n        const emptyCells = this.getEmptyCells();\n        \n        if (emptyCells.length > 0) {\n            const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];\n            this.board[randomCell.row][randomCell.col] = Math.random() < 0.9 ? 2 : 4;\n            \n            const cellElement = document.querySelector(`.cell[row=\"${randomCell.row}\"][col=\"${randomCell.col}\"]`);\n            AnimationModule.animateNewTile(cellElement);\n        }\n    },\n\n    getEmptyCells() {\n        const emptyCells = [];\n        for (let i = 0; i < this.gridSize; i++) {\n            for (let j = 0; j < this.gridSize; j++) {\n                if (this.board[i][j] === 0) {\n                    emptyCells.push({ row: i, col: j });\n                }\n            }\n        }\n        return emptyCells;\n    },\n\n    updateDisplay() {\n        for (let i = 0; i < this.gridSize; i++) {\n            for (let j = 0; j < this.gridSize; j++) {\n                const cellElement = document.querySelector(`.cell[row=\"${i}\"][col=\"${j}\"]`);\n                if (!cellElement) continue;\n                \n                const value = this.board[i][j];\n                \n                cellElement.textContent = value > 0 ? value : '';\n                \n                cellElement.className = 'cell';\n                if (value > 0) {\n                    cellElement.classList.add(`cell-${value}`);\n                }\n            }\n        }\n    },\n\n    slideRow(row) {\n        let filtered = row.filter(val => val !== 0);\n        \n        for (let i = 0; i < filtered.length - 1; i++) {\n            if (filtered[i] === filtered[i + 1]) {\n                filtered[i] *= 2;\n                filtered[i + 1] = 0;\n                \n                ScoreModule.addScore(filtered[i]);\n                AudioModule.play('merge');\n                \n                if (filtered[i] === 2048 && !this.hasWon) {\n                    this.hasWon = true;\n                }\n            }\n        }\n        \n        filtered = filtered.filter(val => val !== 0);\n        \n        while (filtered.length < this.gridSize) {\n            filtered.push(0);\n        }\n        \n        return filtered;\n    },\n\n    moveLeft() {\n        let moved = false;\n        const mergePositions = [];\n        \n        for (let i = 0; i < this.gridSize; i++) {\n            const originalRow = [...this.board[i]];\n            const newRow = this.slideRow(originalRow);\n            \n            if (JSON.stringify(originalRow) !== JSON.stringify(newRow)) {\n                moved = true;\n                this.board[i] = newRow;\n                \n                for (let j = 0; j < this.gridSize; j++) {\n                    if (newRow[j] > 0 && newRow[j] !== originalRow[j]) {\n                        if (j > 0 && newRow[j] === newRow[j - 1]) {\n                            mergePositions.push({ row: i, col: j });\n                        }\n                    }\n                }\n            }\n        }\n        \n        return { moved, mergePositions };\n    },\n\n    moveRight() {\n        let moved = false;\n        const mergePositions = [];\n        \n        for (let i = 0; i < this.gridSize; i++) {\n            const originalRow = [...this.board[i]];\n            const reversed = originalRow.reverse();\n            const newReversed = this.slideRow(reversed);\n            const newRow = newReversed.reverse();\n            \n            if (JSON.stringify(originalRow) !== JSON.stringify(newRow)) {\n                moved = true;\n                this.board[i] = newRow;\n                \n                for (let j = 0; j < this.gridSize; j++) {\n                    if (newRow[j] > 0 && newRow[j] !== originalRow[j]) {\n                        if (j < this.gridSize - 1 && newRow[j] === newRow[j + 1]) {\n                            mergePositions.push({ row: i, col: j });\n                        }\n                    }\n                }\n            }\n        }\n        \n        return { moved, mergePositions };\n    },\n\n    moveUp() {\n        let moved = false;\n        const mergePositions = [];\n        \n        for (let j = 0; j < this.gridSize; j++) {\n            const originalColumn = [];\n            for (let i = 0; i < this.gridSize; i++) {\n                originalColumn.push(this.board[i][j]);\n            }\n            \n            const newColumn = this.slideRow(originalColumn);\n            \n            if (JSON.stringify(originalColumn) !== JSON.stringify(newColumn)) {\n                moved = true;\n                for (let i = 0; i < this.gridSize; i++) {\n                    this.board[i][j] = newColumn[i];\n                }\n                \n                for (let i = 0; i < this.gridSize; i++) {\n                    if (newColumn[i] > 0 && newColumn[i] !== originalColumn[i]) {\n                        if (i > 0 && newColumn[i] === newColumn[i - 1]) {\n                            mergePositions.push({ row: i, col: j });\n                        }\n                    }\n                }\n            }\n        }\n        \n        return { moved, mergePositions };\n    },\n\n    moveDown() {\n        let moved = false;\n        const mergePositions = [];\n        \n        for (let j = 0; j < this.gridSize; j++) {\n            const originalColumn = [];\n            for (let i = 0; i < this.gridSize; i++) {\n                originalColumn.push(this.board[i][j]);\n            }\n            \n            const reversed = originalColumn.reverse();\n            const newReversed = this.slideRow(reversed);\n            const newColumn = newReversed.reverse();\n            \n            if (JSON.stringify(originalColumn) !== JSON.stringify(newColumn)) {\n                moved = true;\n                for (let i = 0; i < this.gridSize; i++) {\n                    this.board[i][j] = newColumn[i];\n                }\n                \n                for (let i = 0; i < this.gridSize; i++) {\n                    if (newColumn[i] > 0 && newColumn[i] !== originalColumn[i]) {\n                        if (i < this.gridSize - 1 && newColumn[i] === newColumn[i + 1]) {\n                            mergePositions.push({ row: i, col: j });\n                        }\n                    }\n                }\n            }\n        }\n        \n        return { moved, mergePositions };\n    },\n\n    move(direction) {\n        if (this.isMoving || this.gameOver || !GameControlModule.isRunning || GameControlModule.isPaused) {\n            return;\n        }\n\n        this.isMoving = true;\n        \n        let result;\n        switch (direction) {\n            case 'left':\n                result = this.moveLeft();\n                break;\n            case 'right':\n                result = this.moveRight();\n                break;\n            case 'up':\n                result = this.moveUp();\n                break;\n            case 'down':\n                result = this.moveDown();\n                break;\n            default:\n                this.isMoving = false;\n                return;\n        }\n\n        if (result.moved) {\n            AudioModule.play('move');\n            this.updateDisplay();\n            \n            result.mergePositions.forEach(pos => {\n                const cellElement = document.querySelector(`.cell[row=\"${pos.row}\"][col=\"${pos.col}\"]`);\n                AnimationModule.animateMergedTile(cellElement);\n            });\n\n            setTimeout(() => {\n                this.addRandomTile();\n                this.updateDisplay();\n                \n                if (this.hasWon) {\n                    this.showGameOver(true);\n                } else if (this.checkGameOver()) {\n                    this.showGameOver(false);\n                }\n                \n                this.isMoving = false;\n            }, 100);\n        } else {\n            this.isMoving = false;\n        }\n    },\n\n    checkGameOver() {\n        if (this.getEmptyCells().length > 0) {\n            return false;\n        }\n        \n        for (let i = 0; i < this.gridSize; i++) {\n            for (let j = 0; j < this.gridSize; j++) {\n                const current = this.board[i][j];\n                if (j < this.gridSize - 1 && current === this.board[i][j + 1]) {\n                    return false;\n                }\n                if (i < this.gridSize - 1 && current === this.board[i + 1][j]) {\n                    return false;\n                }\n            }\n        }\n        \n        return true;\n    },\n\n    showGameOver(isWin) {\n        this.gameOver = true;\n        \n        if (this.elements.gameOverElement) {\n            if (isWin) {\n                this.elements.gameOverTitle.textContent = '🎉 恭喜胜利！';\n                AudioModule.play('win');\n            } else {\n                this.elements.gameOverTitle.textContent = '😢 游戏结束';\n                AudioModule.play('gameOver');\n            }\n            this.elements.finalScoreElement.textContent = ScoreModule.getScore();\n            this.elements.gameOverElement.classList.add('show');\n        }\n        \n        GameControlModule.gameOver(isWin);\n    },\n\n    initEventListeners() {\n        document.addEventListener('keydown', (e) => {\n            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) > -1) {\n                e.preventDefault();\n                const direction = e.key.replace('Arrow', '').toLowerCase();\n                this.move(direction);\n            }\n        });\n\n        let touchStartX = 0;\n        let touchStartY = 0;\n\n        if (this.elements.gameBoard) {\n            this.elements.gameBoard.addEventListener('touchstart', (e) => {\n                touchStartX = e.touches[0].clientX;\n                touchStartY = e.touches[0].clientY;\n            }, { passive: true });\n\n            this.elements.gameBoard.addEventListener('touchend', (e) => {\n                if (!e.changedTouches[0]) return;\n                \n                const touchEndX = e.changedTouches[0].clientX;\n                const touchEndY = e.changedTouches[0].clientY;\n                \n                const diffX = touchEndX - touchStartX;\n                const diffY = touchEndY - touchStartY;\n                \n                const minSwipeDistance = 30;\n                \n                if (Math.abs(diffX) > Math.abs(diffY)) {\n                    if (Math.abs(diffX) > minSwipeDistance) {\n                        if (diffX > 0) {\n                            this.move('right');\n                        } else {\n                            this.move('left');\n                        }\n                    }\n                } else {\n                    if (Math.abs(diffY) > minSwipeDistance) {\n                        if (diffY > 0) {\n                            this.move('down');\n                        } else {\n                            this.move('up');\n                        }\n                    }\n                }\n            }, { passive: true });\n        }\n\n        const startBtn = document.getElementById('start-btn');\n        if (startBtn) {\n            startBtn.addEventListener('click', () => {\n                GameControlModule.startGame();\n            });\n        }\n\n        const pauseBtn = document.getElementById('pause-btn');\n        if (pauseBtn) {\n            pauseBtn.addEventListener('click', () => {\n                if (GameControlModule.isPaused) {\n                    GameControlModule.resumeGame();\n                } else {\n                    GameControlModule.pauseGame();\n                }\n            });\n        }\n\n        const restartBtn = document.getElementById('restart-btn');\n        if (restartBtn) {\n            restartBtn.addEventListener('click', () => {\n                if (confirm('确定要重新开始游戏吗？当前进度将丢失。')) {\n                    GameControlModule.restartGame();\n                }\n            });\n        }\n\n        const playAgainBtn = document.getElementById('play-again-btn');\n        if (playAgainBtn) {\n            playAgainBtn.addEventListener('click', () => {\n                GameControlModule.restartGame();\n            });\n        }\n\n        const resumePauseBtn = document.getElementById('resume-pause-btn');\n        if (resumePauseBtn) {\n            resumePauseBtn.addEventListener('click', () => {\n                GameControlModule.resumeGame();\n            });\n        }\n\n        const leaderboardBtn = document.getElementById('leaderboard-btn');\n        if (leaderboardBtn) {\n            leaderboardBtn.addEventListener('click', () => {\n                LeaderboardModule.showLeaderboard();\n            });\n        }\n\n        const closeLeaderboard = document.getElementById('close-leaderboard');\n        if (closeLeaderboard) {\n            closeLeaderboard.addEventListener('click', () => {\n                LeaderboardModule.hideLeaderboard();\n            });\n        }\n\n        const clearLeaderboard = document.getElementById('clear-leaderboard');\n        if (clearLeaderboard) {\n            clearLeaderboard.addEventListener('click', () => {\n                LeaderboardModule.clearLeaderboard();\n            });\n        }\n\n        const audioToggle = document.getElementById('audio-toggle');\n        if (audioToggle) {\n            audioToggle.addEventListener('click', () => {\n                AudioModule.toggle();\n            });\n        }\n\n        const themeToggle = document.getElementById('theme-toggle');\n        if (themeToggle) {\n            themeToggle.addEventListener('click', () => {\n                ThemeModule.toggle();\n            });\n        }\n\n        const leaderboardModal = document.getElementById('leaderboard-modal');\n        if (leaderboardModal) {\n            leaderboardModal.addEventListener('click', (e) => {\n                if (e.target === leaderboardModal) {\n                    LeaderboardModule.hideLeaderboard();\n                }\n            });\n        }\n    }\n};\n\n// ========================================\n// 初始化游戏\n// ========================================\ndocument.addEventListener('DOMContentLoaded', () => {\n    GameCore.init();\n});
+// ========================================
+// 存储模块 - 负责localStorage操作
+// ========================================
+const StorageModule = {
+    STORAGE_KEYS: {
+        BEST_SCORE: '2048_best_score',
+        LEADERBOARD: '2048_leaderboard',
+        TOTAL_GAMES: '2048_total_games',
+        AUDIO_ENABLED: '2048_audio_enabled',
+        THEME: '2048_theme'
+    },
+
+    saveBestScore(score) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.BEST_SCORE, score.toString());
+        } catch (e) {
+            console.error('保存最高分失败:', e);
+        }
+    },
+
+    getBestScore() {
+        try {
+            const score = localStorage.getItem(this.STORAGE_KEYS.BEST_SCORE);
+            return score ? parseInt(score, 10) : 0;
+        } catch (e) {
+            console.error('读取最高分失败:', e);
+            return 0;
+        }
+    },
+
+    saveLeaderboard(records) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.LEADERBOARD, JSON.stringify(records));
+        } catch (e) {
+            console.error('保存排行榜失败:', e);
+        }
+    },
+
+    getLeaderboard() {
+        try {
+            const data = localStorage.getItem(this.STORAGE_KEYS.LEADERBOARD);
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            console.error('读取排行榜失败:', e);
+            return [];
+        }
+    },
+
+    addLeaderboardRecord(score, difficulty) {
+        const records = this.getLeaderboard();
+        const record = {
+            score: score,
+            difficulty: difficulty,
+            date: new Date().toLocaleString('zh-CN'),
+            timestamp: Date.now()
+        };
+        records.push(record);
+        records.sort((a, b) => b.score - a.score);
+        if (records.length > 100) {
+            records.length = 100;
+        }
+        this.saveLeaderboard(records);
+    },
+
+    clearLeaderboard() {
+        try {
+            localStorage.removeItem(this.STORAGE_KEYS.LEADERBOARD);
+            localStorage.removeItem(this.STORAGE_KEYS.TOTAL_GAMES);
+        } catch (e) {
+            console.error('清空排行榜失败:', e);
+        }
+    },
+
+    getTotalGames() {
+        try {
+            const count = localStorage.getItem(this.STORAGE_KEYS.TOTAL_GAMES);
+            return count ? parseInt(count, 10) : 0;
+        } catch (e) {
+            console.error('读取总局数失败:', e);
+            return 0;
+        }
+    },
+
+    incrementTotalGames() {
+        try {
+            const current = this.getTotalGames();
+            localStorage.setItem(this.STORAGE_KEYS.TOTAL_GAMES, (current + 1).toString());
+        } catch (e) {
+            console.error('增加总局数失败:', e);
+        }
+    },
+
+    saveAudioEnabled(enabled) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.AUDIO_ENABLED, enabled.toString());
+        } catch (e) {
+            console.error('保存音效设置失败:', e);
+        }
+    },
+
+    getAudioEnabled() {
+        try {
+            const enabled = localStorage.getItem(this.STORAGE_KEYS.AUDIO_ENABLED);
+            return enabled === null ? true : enabled === 'true';
+        } catch (e) {
+            console.error('读取音效设置失败:', e);
+            return true;
+        }
+    },
+
+    saveTheme(theme) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.THEME, theme);
+        } catch (e) {
+            console.error('保存主题设置失败:', e);
+        }
+    },
+
+    getTheme() {
+        try {
+            const theme = localStorage.getItem(this.STORAGE_KEYS.THEME);
+            return theme || 'classic';
+        } catch (e) {
+            console.error('读取主题设置失败:', e);
+            return 'classic';
+        }
+    }
+};
+
+// ========================================
+// 音效模块 - 使用Web Audio API实现音效
+// ========================================
+const AudioModule = {
+    audioContext: null,
+    enabled: true,
+    sounds: {},
+
+    init() {
+        this.enabled = StorageModule.getAudioEnabled();
+        this.createSounds();
+        this.updateButtonDisplay();
+    },
+
+    createSounds() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            this.sounds = {
+                move: () => this.playMoveSound(),
+                merge: () => this.playMergeSound(),
+                newTile: () => this.playNewTileSound(),
+                win: () => this.playWinSound(),
+                gameOver: () => this.playGameOverSound()
+            };
+        } catch (e) {
+            console.error('Web Audio API不可用:', e);
+        }
+    },
+
+    ensureContext() {
+        if (!this.audioContext) {
+            this.createSounds();
+        }
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+    },
+
+    playMoveSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = 200;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.1);
+        } catch (e) {
+            console.error('播放移动音效失败:', e);
+        }
+    },
+
+    playMergeSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.1);
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.15);
+        } catch (e) {
+            console.error('播放合并音效失败:', e);
+        }
+    },
+
+    playNewTileSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = 600;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.08, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.05);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.05);
+        } catch (e) {
+            console.error('播放新方块音效失败:', e);
+        }
+    },
+
+    playWinSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.3);
+                }, index * 150);
+            });
+        } catch (e) {
+            console.error('播放胜利音效失败:', e);
+        }
+    },
+
+    playGameOverSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const notes = [392, 349.23, 329.63, 293.66];
+            notes.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sawtooth';
+                    
+                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.4);
+                }, index * 200);
+            });
+        } catch (e) {
+            console.error('播放游戏结束音效失败:', e);
+        }
+    },
+
+    play(type) {
+        if (this.sounds[type]) {
+            this.sounds[type]();
+        }
+    },
+
+    toggle() {
+        this.ensureContext();
+        this.enabled = !this.enabled;
+        StorageModule.saveAudioEnabled(this.enabled);
+        this.updateButtonDisplay();
+    },
+
+    updateButtonDisplay() {
+        const button = document.getElementById('audio-toggle');
+        if (button) {
+            button.textContent = this.enabled ? '🔊' : '🔇';
+            button.title = this.enabled ? '音效已开启' : '音效已关闭';
+        }
+    }
+};
+
+// ========================================
+// 主题模块 - 管理主题切换
+// ========================================
+const ThemeModule = {
+    currentTheme: 'classic',
+
+    init() {
+        this.currentTheme = StorageModule.getTheme();
+        this.applyTheme();
+        this.updateButtonDisplay();
+    },
+
+    toggle() {
+        this.currentTheme = this.currentTheme === 'classic' ? 'dark' : 'classic';
+        StorageModule.saveTheme(this.currentTheme);
+        this.applyTheme();
+        this.updateButtonDisplay();
+    },
+
+    applyTheme() {
+        document.body.classList.remove('theme-classic', 'theme-dark');
+        document.body.classList.add(`theme-${this.currentTheme}`);
+    },
+
+    updateButtonDisplay() {
+        const button = document.getElementById('theme-toggle');
+        if (button) {
+            button.textContent = this.currentTheme === 'classic' ? '🌙' : '☀️';
+            button.title = this.currentTheme === 'classic' ? '切换到暗夜主题' : '切换到经典主题';
+        }
+    }
+};
+
+// ========================================
+// 计分模块 - 负责分数管理和动画
+// ========================================
+const ScoreModule = {
+    score: 0,
+    bestScore: 0,
+    lastAddedScore: 0,
+
+    init() {
+        this.bestScore = StorageModule.getBestScore();
+        this.updateDisplay();
+    },
+
+    addScore(points) {
+        this.score += points;
+        this.lastAddedScore = points;
+        
+        if (this.score > this.bestScore) {
+            this.bestScore = this.score;
+            StorageModule.saveBestScore(this.bestScore);
+        }
+        
+        this.updateDisplay();
+    },
+
+    resetScore() {
+        this.score = 0;
+        this.lastAddedScore = 0;
+        this.updateDisplay();
+    },
+
+    updateDisplay() {
+        const scoreElement = document.getElementById('score');
+        const bestScoreElement = document.getElementById('best-score');
+        
+        if (scoreElement) {
+            scoreElement.textContent = this.score;
+        }
+        if (bestScoreElement) {
+            bestScoreElement.textContent = this.bestScore;
+        }
+    },
+
+    getScore() {
+        return this.score;
+    },
+
+    getBestScore() {
+        return this.bestScore;
+    }
+};
+
+// ========================================
+// 动画模块 - 负责各种动画效果
+// ========================================
+const AnimationModule = {
+    showScorePopup(points, position) {
+        const container = document.getElementById('score-popup-container');
+        if (!container) return;
+
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.textContent = '+' + points;
+        
+        popup.style.left = position.x + 'px';
+        popup.style.top = position.y + 'px';
+        
+        container.appendChild(popup);
+
+        setTimeout(() => {
+            if (popup.parentNode) {
+                popup.parentNode.removeChild(popup);
+            }
+        }, 1000);
+    },
+
+    animateNewTile(cellElement) {
+        if (!cellElement) return;
+        cellElement.classList.add('cell-new');
+        setTimeout(() => {
+            cellElement.classList.remove('cell-new');
+        }, 200);
+        AudioModule.play('newTile');
+    },
+
+    animateMergedTile(cellElement) {
+        if (!cellElement) return;
+        cellElement.classList.add('cell-merged');
+        setTimeout(() => {
+            cellElement.classList.remove('cell-merged');
+        }, 200);
+    }
+};
+
+// ========================================
+// 排行榜模块 - 负责排行榜UI和数据管理
+// ========================================
+const LeaderboardModule = {
+    showLeaderboard() {
+        const modal = document.getElementById('leaderboard-modal');
+        if (modal) {
+            modal.classList.add('show');
+            this.updateLeaderboardDisplay();
+        }
+    },
+
+    hideLeaderboard() {
+        const modal = document.getElementById('leaderboard-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+
+    updateLeaderboardDisplay() {
+        const recordsContainer = document.getElementById('leaderboard-records');
+        const totalGamesElement = document.getElementById('total-games');
+        
+        if (!recordsContainer) return;
+
+        const records = StorageModule.getLeaderboard();
+        const top10 = records.slice(0, 10);
+        const totalGames = StorageModule.getTotalGames();
+
+        if (totalGamesElement) {
+            totalGamesElement.textContent = totalGames;
+        }
+
+        recordsContainer.innerHTML = '';
+
+        if (top10.length === 0) {
+            recordsContainer.innerHTML = '<div class="leaderboard-item" style="justify-content: center;">暂无记录</div>';
+            return;
+        }
+
+        top10.forEach((record, index) => {
+            const item = document.createElement('div');
+            item.className = 'leaderboard-item';
+            
+            let difficultyName = '';
+            switch (record.difficulty) {
+                case 'easy':
+                    difficultyName = '简单';
+                    break;
+                case 'hard':
+                    difficultyName = '困难';
+                    break;
+                default:
+                    difficultyName = '普通';
+            }
+
+            item.innerHTML = `
+                <span>第${index + 1}名</span>
+                <span>${record.score}</span>
+                <span>${difficultyName}</span>
+                <span>${record.date}</span>
+            `;
+            recordsContainer.appendChild(item);
+        });
+    },
+
+    clearLeaderboard() {
+        if (confirm('确定要清空所有排行榜记录吗？')) {
+            StorageModule.clearLeaderboard();
+            this.updateLeaderboardDisplay();
+        }
+    }
+};
+
+// ========================================
+// 游戏控制模块 - 负责游戏流程控制
+// ========================================
+const GameControlModule = {
+    isRunning: false,
+    isPaused: false,
+
+    startGame() {
+        this.isRunning = true;
+        this.isPaused = false;
+        
+        StorageModule.incrementTotalGames();
+        
+        GameCore.initGame();
+        
+        this.updateButtonStates();
+    },
+
+    pauseGame() {
+        if (!this.isRunning || this.isPaused) return;
+        
+        this.isPaused = true;
+        const pauseOverlay = document.getElementById('pause-overlay');
+        if (pauseOverlay) {
+            pauseOverlay.classList.add('show');
+        }
+        
+        this.updateButtonStates();
+    },
+
+    resumeGame() {
+        if (!this.isRunning || !this.isPaused) return;
+        
+        this.isPaused = false;
+        const pauseOverlay = document.getElementById('pause-overlay');
+        if (pauseOverlay) {
+            pauseOverlay.classList.remove('show');
+        }
+        
+        this.updateButtonStates();
+    },
+
+    restartGame() {
+        ScoreModule.resetScore();
+        
+        GameCore.initBoardCells();
+        GameCore.initGame();
+        
+        this.isRunning = true;
+        this.isPaused = false;
+        
+        const pauseOverlay = document.getElementById('pause-overlay');
+        if (pauseOverlay) {
+            pauseOverlay.classList.remove('show');
+        }
+        
+        this.updateButtonStates();
+    },
+
+    updateButtonStates() {
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        if (startBtn) {
+            startBtn.disabled = this.isRunning && !this.isPaused;
+            startBtn.textContent = this.isRunning && !this.isPaused ? '游戏进行中' : '开始游戏';
+        }
+
+        if (pauseBtn) {
+            pauseBtn.disabled = !this.isRunning || this.isPaused;
+            if (this.isPaused) {
+                pauseBtn.textContent = '继续游戏';
+                pauseBtn.classList.add('active');
+            } else {
+                pauseBtn.textContent = '暂停游戏';
+                pauseBtn.classList.remove('active');
+            }
+        }
+    },
+
+    gameOver(isWin) {
+        this.isRunning = false;
+        this.isPaused = false;
+        
+        StorageModule.addLeaderboardRecord(
+            ScoreModule.getScore(),
+            GameCore.currentDifficulty
+        );
+        
+        this.updateButtonStates();
+    }
+};
+
+// ========================================
+// 游戏核心模块 - 游戏主逻辑
+// ========================================
+const GameCore = {
+    board: [],
+    gridSize: 4,
+    currentDifficulty: 'normal',
+    hasWon: false,
+    gameOver: false,
+    isMoving: false,
+    elements: {
+        gameBoard: null,
+        scoreElement: null,
+        bestScoreElement: null,
+        gameOverElement: null,
+        gameOverTitle: null,
+        finalScoreElement: null
+    },
+
+    DIFFICULTY_CONFIG: {
+        easy: 5,
+        normal: 4,
+        hard: 3
+    },
+
+    init() {
+        this.elements.gameBoard = document.getElementById('game-board');
+        this.elements.scoreElement = document.getElementById('score');
+        this.elements.bestScoreElement = document.getElementById('best-score');
+        this.elements.gameOverElement = document.getElementById('game-over');
+        this.elements.gameOverTitle = document.getElementById('game-over-title');
+        this.elements.finalScoreElement = document.getElementById('final-score');
+
+        ScoreModule.init();
+        this.setupDifficulty();
+        this.initBoardCells();
+        this.initEventListeners();
+        this.resetGameState();
+    },
+
+    setupDifficulty() {
+        const difficultySelect = document.getElementById('difficulty');
+        if (difficultySelect) {
+            this.currentDifficulty = difficultySelect.value;
+            this.gridSize = this.DIFFICULTY_CONFIG[this.currentDifficulty];
+
+            difficultySelect.addEventListener('change', (e) => {
+                this.changeDifficulty(e.target.value);
+            });
+        }
+    },
+
+    changeDifficulty(newDifficulty) {
+        if (this.currentDifficulty === newDifficulty) return;
+
+        this.currentDifficulty = newDifficulty;
+        this.gridSize = this.DIFFICULTY_CONFIG[newDifficulty];
+
+        GameControlModule.restartGame();
+    },
+
+    initBoardCells() {
+        if (!this.elements.gameBoard) return;
+
+        this.elements.gameBoard.innerHTML = '';
+
+        const gridTemplateColumns = `repeat(${this.gridSize}, 1fr)`;
+        this.elements.gameBoard.style.gridTemplateColumns = gridTemplateColumns;
+
+        let boardSize = 320;
+        let fontSize = 32;
+        if (this.gridSize === 5) {
+            boardSize = 360;
+            fontSize = 24;
+        } else if (this.gridSize === 3) {
+            boardSize = 280;
+            fontSize = 36;
+        }
+
+        this.elements.gameBoard.style.width = boardSize + 'px';
+        this.elements.gameBoard.style.height = boardSize + 'px';
+
+        const gap = 10;
+        const padding = 10;
+        const cellSize = (boardSize - padding * 2 - gap * (this.gridSize - 1)) / this.gridSize;
+
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.setAttribute('row', i);
+                cell.setAttribute('col', j);
+                cell.style.width = cellSize + 'px';
+                cell.style.height = cellSize + 'px';
+                cell.style.fontSize = fontSize + 'px';
+                this.elements.gameBoard.appendChild(cell);
+            }
+        }
+    },
+
+    resetGameState() {
+        this.board = [];
+        for (let i = 0; i < this.gridSize; i++) {
+            this.board[i] = [];
+            for (let j = 0; j < this.gridSize; j++) {
+                this.board[i][j] = 0;
+            }
+        }
+
+        this.hasWon = false;
+        this.gameOver = false;
+        this.isMoving = false;
+    },
+
+    initGame() {
+        this.resetGameState();
+
+        if (this.elements.gameOverElement) {
+            this.elements.gameOverElement.classList.remove('show');
+        }
+
+        this.addRandomTile();
+        this.addRandomTile();
+        this.updateDisplay();
+    },
+
+    addRandomTile() {
+        const emptyCells = this.getEmptyCells();
+
+        if (emptyCells.length > 0) {
+            const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            this.board[randomCell.row][randomCell.col] = Math.random() < 0.9 ? 2 : 4;
+
+            const cellElement = document.querySelector(`.cell[row="${randomCell.row}"][col="${randomCell.col}"]`);
+            AnimationModule.animateNewTile(cellElement);
+        }
+    },
+
+    getEmptyCells() {
+        const emptyCells = [];
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                if (this.board[i][j] === 0) {
+                    emptyCells.push({ row: i, col: j });
+                }
+            }
+        }
+        return emptyCells;
+    },
+
+    updateDisplay() {
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const cellElement = document.querySelector(`.cell[row="${i}"][col="${j}"]`);
+                if (!cellElement) continue;
+
+                const value = this.board[i][j];
+
+                cellElement.textContent = value > 0 ? value : '';
+
+                cellElement.className = 'cell';
+                if (value > 0) {
+                    cellElement.classList.add(`cell-${value}`);
+                }
+            }
+        }
+    },
+
+    slideRow(row) {
+        let filtered = row.filter(val => val !== 0);
+
+        for (let i = 0; i < filtered.length - 1; i++) {
+            if (filtered[i] === filtered[i + 1]) {
+                filtered[i] *= 2;
+                filtered[i + 1] = 0;
+
+                ScoreModule.addScore(filtered[i]);
+
+                if (filtered[i] === 2048 && !this.hasWon) {
+                    this.hasWon = true;
+                    AudioModule.play('win');
+                }
+            }
+        }
+
+        filtered = filtered.filter(val => val !== 0);
+
+        while (filtered.length < this.gridSize) {
+            filtered.push(0);
+        }
+
+        return filtered;
+    },
+
+    moveLeft() {
+        let moved = false;
+
+        for (let i = 0; i < this.gridSize; i++) {
+            const originalRow = [...this.board[i]];
+            const newRow = this.slideRow(originalRow);
+
+            if (JSON.stringify(originalRow) !== JSON.stringify(newRow)) {
+                moved = true;
+                this.board[i] = newRow;
+            }
+        }
+
+        return moved;
+    },
+
+    moveRight() {
+        let moved = false;
+
+        for (let i = 0; i < this.gridSize; i++) {
+            const originalRow = [...this.board[i]];
+            const reversed = originalRow.reverse();
+            const newReversed = this.slideRow(reversed);
+            const newRow = newReversed.reverse();
+
+            if (JSON.stringify(originalRow) !== JSON.stringify(newRow)) {
+                moved = true;
+                this.board[i] = newRow;
+            }
+        }
+
+        return moved;
+    },
+
+    moveUp() {
+        let moved = false;
+
+        for (let j = 0; j < this.gridSize; j++) {
+            const originalColumn = [];
+            for (let i = 0; i < this.gridSize; i++) {
+                originalColumn.push(this.board[i][j]);
+            }
+
+            const newColumn = this.slideRow(originalColumn);
+
+            if (JSON.stringify(originalColumn) !== JSON.stringify(newColumn)) {
+                moved = true;
+                for (let i = 0; i < this.gridSize; i++) {
+                    this.board[i][j] = newColumn[i];
+                }
+            }
+        }
+
+        return moved;
+    },
+
+    moveDown() {
+        let moved = false;
+
+        for (let j = 0; j < this.gridSize; j++) {
+            const originalColumn = [];
+            for (let i = 0; i < this.gridSize; i++) {
+                originalColumn.push(this.board[i][j]);
+            }
+
+            const reversed = originalColumn.reverse();
+            const newReversed = this.slideRow(reversed);
+            const newColumn = newReversed.reverse();
+
+            if (JSON.stringify(originalColumn) !== JSON.stringify(newColumn)) {
+                moved = true;
+                for (let i = 0; i < this.gridSize; i++) {
+                    this.board[i][j] = newColumn[i];
+                }
+            }
+        }
+
+        return moved;
+    },
+
+    hasWonGame() {
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                if (this.board[i][j] === 2048) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    },
+
+    canMove() {
+        if (this.getEmptyCells().length > 0) {
+            return true;
+        }
+
+        for (let i = 0; i < this.gridSize; i++) {
+            for (let j = 0; j < this.gridSize; j++) {
+                const current = this.board[i][j];
+                if (j < this.gridSize - 1 && this.board[i][j + 1] === current) {
+                    return true;
+                }
+                if (i < this.gridSize - 1 && this.board[i + 1][j] === current) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    },
+
+    move(direction) {
+        if (this.gameOver || this.isMoving) return;
+
+        this.isMoving = true;
+        let moved = false;
+
+        switch (direction) {
+            case 'left':
+                moved = this.moveLeft();
+                break;
+            case 'right':
+                moved = this.moveRight();
+                break;
+            case 'up':
+                moved = this.moveUp();
+                break;
+            case 'down':
+                moved = this.moveDown();
+                break;
+        }
+
+        if (moved) {
+            AudioModule.play('move');
+            setTimeout(() => {
+                this.addRandomTile();
+                this.updateDisplay();
+
+                if (this.hasWonGame() && !this.hasWon) {
+                    this.hasWon = true;
+                    this.showGameOver(true);
+                } else if (!this.canMove()) {
+                    this.gameOver = true;
+                    this.showGameOver(false);
+                }
+
+                this.isMoving = false;
+            }, 100);
+        } else {
+            this.isMoving = false;
+        }
+    },
+
+    showGameOver(isWin) {
+        if (this.elements.gameOverElement) {
+            this.elements.gameOverElement.classList.add('show');
+        }
+
+        if (this.elements.gameOverTitle) {
+            this.elements.gameOverTitle.textContent = isWin ? '🎉 恭喜胜利！' : '😔 游戏结束';
+        }
+
+        if (this.elements.finalScoreElement) {
+            this.elements.finalScoreElement.textContent = ScoreModule.getScore();
+        }
+
+        if (!isWin) {
+            AudioModule.play('gameOver');
+        }
+
+        GameControlModule.gameOver(isWin);
+    },
+
+    initEventListeners() {
+        document.addEventListener('keydown', (e) => {
+            if (GameControlModule.isPaused) return;
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    this.move('left');
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    this.move('right');
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.move('up');
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.move('down');
+                    break;
+            }
+        });
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const minSwipeDistance = 30;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (GameControlModule.isPaused) return;
+
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            const absX = Math.abs(deltaX);
+            const absY = Math.abs(deltaY);
+
+            if (Math.max(absX, absY) < minSwipeDistance) return;
+
+            if (absX > absY) {
+                if (deltaX > 0) {
+                    this.move('right');
+                } else {
+                    this.move('left');
+                }
+            } else {
+                if (deltaY > 0) {
+                    this.move('down');
+                } else {
+                    this.move('up');
+                }
+            }
+        }, { passive: true });
+    }
+};
+
+// ========================================
+// 页面初始化
+// ========================================
+window.addEventListener('DOMContentLoaded', () => {
+    GameCore.init();
+    AudioModule.init();
+    ThemeModule.init();
+
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const leaderboardBtn = document.getElementById('leaderboard-btn');
+    const closeLeaderboardBtn = document.getElementById('close-leaderboard');
+    const clearLeaderboardBtn = document.getElementById('clear-leaderboard');
+    const resumeBtn = document.getElementById('resume-btn');
+    const audioToggleBtn = document.getElementById('audio-toggle');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+
+    if (startBtn) {
+        startBtn.addEventListener('click', () => GameControlModule.startGame());
+    }
+
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+            if (GameControlModule.isPaused) {
+                GameControlModule.resumeGame();
+            } else {
+                GameControlModule.pauseGame();
+            }
+        });
+    }
+
+    if (restartBtn) {
+        restartBtn.addEventListener('click', () => GameControlModule.restartGame());
+    }
+
+    if (leaderboardBtn) {
+        leaderboardBtn.addEventListener('click', () => LeaderboardModule.showLeaderboard());
+    }
+
+    if (closeLeaderboardBtn) {
+        closeLeaderboardBtn.addEventListener('click', () => LeaderboardModule.hideLeaderboard());
+    }
+
+    if (clearLeaderboardBtn) {
+        clearLeaderboardBtn.addEventListener('click', () => LeaderboardModule.clearLeaderboard());
+    }
+
+    if (resumeBtn) {
+        resumeBtn.addEventListener('click', () => GameControlModule.resumeGame());
+    }
+
+    if (audioToggleBtn) {
+        audioToggleBtn.addEventListener('click', () => AudioModule.toggle());
+    }
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => ThemeModule.toggle());
+    }
+
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('leaderboard-modal')) {
+            LeaderboardModule.hideLeaderboard();
+        }
+    });
+});

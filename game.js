@@ -7,7 +7,10 @@ const StorageModule = {
         LEADERBOARD: '2048_leaderboard',
         TOTAL_GAMES: '2048_total_games',
         AUDIO_ENABLED: '2048_audio_enabled',
-        THEME: '2048_theme'
+        THEME: '2048_theme',
+        ACHIEVEMENTS: '2048_achievements',
+        SHOW_WELCOME: '2048_show_welcome',
+        PLAYER_NICKNAME: '2048_player_nickname'
     },
 
     saveBestScore(score) {
@@ -46,11 +49,12 @@ const StorageModule = {
         }
     },
 
-    addLeaderboardRecord(score, difficulty) {
+    addLeaderboardRecord(score, difficulty, nickname = '匿名玩家') {
         const records = this.getLeaderboard();
         const record = {
             score: score,
             difficulty: difficulty,
+            nickname: nickname,
             date: new Date().toLocaleString('zh-CN'),
             timestamp: Date.now()
         };
@@ -124,6 +128,73 @@ const StorageModule = {
             console.error('读取主题设置失败:', e);
             return 'classic';
         }
+    },
+
+    saveAchievements(achievements) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
+        } catch (e) {
+            console.error('保存成就失败:', e);
+        }
+    },
+
+    getAchievements() {
+        try {
+            const data = localStorage.getItem(this.STORAGE_KEYS.ACHIEVEMENTS);
+            return data ? JSON.parse(data) : {};
+        } catch (e) {
+            console.error('读取成就失败:', e);
+            return {};
+        }
+    },
+
+    unlockAchievement(achievementId) {
+        const achievements = this.getAchievements();
+        if (!achievements[achievementId]) {
+            achievements[achievementId] = {
+                unlocked: true,
+                unlockedAt: new Date().toLocaleString('zh-CN'),
+                timestamp: Date.now()
+            };
+            this.saveAchievements(achievements);
+            return true;
+        }
+        return false;
+    },
+
+    saveShowWelcome(show) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.SHOW_WELCOME, show.toString());
+        } catch (e) {
+            console.error('保存欢迎设置失败:', e);
+        }
+    },
+
+    getShowWelcome() {
+        try {
+            const show = localStorage.getItem(this.STORAGE_KEYS.SHOW_WELCOME);
+            return show === null ? true : show === 'true';
+        } catch (e) {
+            console.error('读取欢迎设置失败:', e);
+            return true;
+        }
+    },
+
+    savePlayerNickname(nickname) {
+        try {
+            localStorage.setItem(this.STORAGE_KEYS.PLAYER_NICKNAME, nickname);
+        } catch (e) {
+            console.error('保存昵称失败:', e);
+        }
+    },
+
+    getPlayerNickname() {
+        try {
+            return localStorage.getItem(this.STORAGE_KEYS.PLAYER_NICKNAME) || '匿名玩家';
+        } catch (e) {
+            console.error('读取昵称失败:', e);
+            return '匿名玩家';
+        }
     }
 };
 
@@ -150,7 +221,8 @@ const AudioModule = {
                 merge: () => this.playMergeSound(),
                 newTile: () => this.playNewTileSound(),
                 win: () => this.playWinSound(),
-                gameOver: () => this.playGameOverSound()
+                gameOver: () => this.playGameOverSound(),
+                achievement: () => this.playAchievementSound()
             };
         } catch (e) {
             console.error('Web Audio API不可用:', e);
@@ -297,6 +369,35 @@ const AudioModule = {
         }
     },
 
+    playAchievementSound() {
+        if (!this.enabled) return;
+        this.ensureContext();
+        
+        try {
+            const notes = [523.25, 659.25, 783.99, 1046.50, 1244.51];
+            notes.forEach((freq, index) => {
+                setTimeout(() => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.25);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.25);
+                }, index * 100);
+            });
+        } catch (e) {
+            console.error('播放成就音效失败:', e);
+        }
+    },
+
     play(type) {
         if (this.sounds[type]) {
             this.sounds[type]();
@@ -348,6 +449,217 @@ const ThemeModule = {
         if (button) {
             button.textContent = this.currentTheme === 'classic' ? '🌙' : '☀️';
             button.title = this.currentTheme === 'classic' ? '切换到暗夜主题' : '切换到经典主题';
+        }
+    }
+};
+
+// ========================================
+// 成就模块 - 管理游戏成就
+// ========================================
+const AchievementModule = {
+    achievements: {
+        first_win: {
+            id: 'first_win',
+            name: '首次通关',
+            description: '第一次达到 2048！',
+            icon: '🏆',
+            unlocked: false
+        },
+        perfect_score: {
+            id: 'perfect_score',
+            name: '满分挑战',
+            description: '在困难模式下达到 2048！',
+            icon: '⭐',
+            unlocked: false
+        },
+        speed_king: {
+            id: 'speed_king',
+            name: '速度之王',
+            description: '在 1 分钟内达到 1024！',
+            icon: '⚡',
+            unlocked: false
+        }
+    },
+
+    init() {
+        this.loadAchievements();
+    },
+
+    loadAchievements() {
+        const saved = StorageModule.getAchievements();
+        Object.keys(this.achievements).forEach(id => {
+            if (saved[id]) {
+                this.achievements[id].unlocked = true;
+                this.achievements[id].unlockedAt = saved[id].unlockedAt;
+            }
+        });
+    },
+
+    unlock(achievementId) {
+        if (this.achievements[achievementId] && !this.achievements[achievementId].unlocked) {
+            this.achievements[achievementId].unlocked = true;
+            this.achievements[achievementId].unlockedAt = new Date().toLocaleString('zh-CN');
+            StorageModule.unlockAchievement(achievementId);
+            AudioModule.play('achievement');
+            this.showNotification(this.achievements[achievementId]);
+            return true;
+        }
+        return false;
+    },
+
+    showNotification(achievement) {
+        const notification = document.createElement('div');
+        notification.className = 'achievement-notification';
+        notification.innerHTML = `
+            <span class="achievement-icon">${achievement.icon}</span>
+            <span class="achievement-text">解锁成就: ${achievement.name}</span>
+        `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+    },
+
+    checkFirstWin() {
+        this.unlock('first_win');
+    },
+
+    checkPerfectScore(difficulty) {
+        if (difficulty === 'hard') {
+            this.unlock('perfect_score');
+        }
+    },
+
+    checkSpeedKing(gameTime) {
+        if (gameTime < 60) {
+            this.unlock('speed_king');
+        }
+    },
+
+    getUnlockedCount() {
+        return Object.values(this.achievements).filter(a => a.unlocked).length;
+    },
+
+    showAchievements() {
+        const modal = document.getElementById('achievements-modal');
+        const list = document.getElementById('achievements-list');
+        
+        if (!modal || !list) return;
+
+        list.innerHTML = '';
+        
+        Object.values(this.achievements).forEach(achievement => {
+            const item = document.createElement('div');
+            item.className = `achievement-item ${achievement.unlocked ? 'unlocked' : ''}`;
+            item.innerHTML = `
+                <div class="achievement-icon">${achievement.unlocked ? achievement.icon : '❓'}</div>
+                <div class="achievement-info">
+                    <div class="achievement-title">${achievement.name}</div>
+                    <div class="achievement-description">${achievement.description}</div>
+                    ${achievement.unlocked ? `<div class="achievement-date">解锁于 ${achievement.unlockedAt}</div>` : ''}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+
+        modal.classList.add('show');
+    },
+
+    hideAchievements() {
+        const modal = document.getElementById('achievements-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+};
+
+// ========================================
+// 分享模块 - 管理游戏分享功能
+// ========================================
+const ShareModule = {
+    showShare(score, difficulty) {
+        const modal = document.getElementById('share-modal');
+        const scoreElement = document.getElementById('share-score');
+        const difficultyElement = document.getElementById('share-difficulty');
+        const textElement = document.getElementById('share-text');
+
+        if (!modal || !scoreElement || !difficultyElement || !textElement) return;
+
+        scoreElement.textContent = score;
+
+        let difficultyName = '普通';
+        switch (difficulty) {
+            case 'easy': difficultyName = '简单'; break;
+            case 'hard': difficultyName = '困难'; break;
+        }
+        difficultyElement.textContent = difficultyName;
+
+        const shareText = `我在 2048 游戏中获得了 ${score} 分！难度：${difficultyName}，快来挑战我吧！\n\n游戏链接：https://wx24013.github.io/2048-game/`;
+        textElement.value = shareText;
+
+        modal.classList.add('show');
+    },
+
+    hideShare() {
+        const modal = document.getElementById('share-modal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+
+    copyToClipboard() {
+        const textElement = document.getElementById('share-text');
+        const successElement = document.getElementById('copy-success');
+
+        if (!textElement) return;
+
+        textElement.select();
+        textElement.setSelectionRange(0, 99999);
+
+        navigator.clipboard.writeText(textElement.value).then(() => {
+            if (successElement) {
+                successElement.classList.add('show');
+                setTimeout(() => {
+                    successElement.classList.remove('show');
+                }, 2000);
+            }
+        }).catch(err => {
+            console.error('复制失败:', err);
+        });
+    }
+};
+
+// ========================================
+// 欢迎引导模块
+// ========================================
+const WelcomeModule = {
+    show() {
+        if (!StorageModule.getShowWelcome()) return;
+
+        const modal = document.getElementById('welcome-modal');
+        if (modal) {
+            modal.classList.add('show');
+        }
+    },
+
+    hide() {
+        const modal = document.getElementById('welcome-modal');
+        const dontShowCheckbox = document.getElementById('dont-show-again');
+
+        if (modal) {
+            modal.classList.remove('show');
+        }
+
+        if (dontShowCheckbox && dontShowCheckbox.checked) {
+            StorageModule.saveShowWelcome(false);
         }
     }
 };
@@ -468,21 +780,41 @@ const LeaderboardModule = {
     updateLeaderboardDisplay() {
         const recordsContainer = document.getElementById('leaderboard-records');
         const totalGamesElement = document.getElementById('total-games');
+        const achievementsCountElement = document.getElementById('achievements-count');
         
         if (!recordsContainer) return;
 
-        const records = StorageModule.getLeaderboard();
-        const top10 = records.slice(0, 10);
+        const sortBy = document.getElementById('sort-by')?.value || 'score';
+        const filterDifficulty = document.getElementById('filter-difficulty')?.value || 'all';
+
+        let records = StorageModule.getLeaderboard();
         const totalGames = StorageModule.getTotalGames();
+        const achievementsCount = AchievementModule.getUnlockedCount();
+
+        if (filterDifficulty !== 'all') {
+            records = records.filter(r => r.difficulty === filterDifficulty);
+        }
+
+        if (sortBy === 'date') {
+            records.sort((a, b) => b.timestamp - a.timestamp);
+        } else {
+            records.sort((a, b) => b.score - a.score);
+        }
+
+        const top10 = records.slice(0, 10);
 
         if (totalGamesElement) {
             totalGamesElement.textContent = totalGames;
         }
 
+        if (achievementsCountElement) {
+            achievementsCountElement.textContent = achievementsCount;
+        }
+
         recordsContainer.innerHTML = '';
 
         if (top10.length === 0) {
-            recordsContainer.innerHTML = '<div class="leaderboard-item" style="justify-content: center;">暂无记录</div>';
+            recordsContainer.innerHTML = '<div class="leaderboard-item" style="justify-content: center; grid-column: span 5;">暂无记录</div>';
             return;
         }
 
@@ -490,20 +822,15 @@ const LeaderboardModule = {
             const item = document.createElement('div');
             item.className = 'leaderboard-item';
             
-            let difficultyName = '';
+            let difficultyName = '普通';
             switch (record.difficulty) {
-                case 'easy':
-                    difficultyName = '简单';
-                    break;
-                case 'hard':
-                    difficultyName = '困难';
-                    break;
-                default:
-                    difficultyName = '普通';
+                case 'easy': difficultyName = '简单'; break;
+                case 'hard': difficultyName = '困难'; break;
             }
 
             item.innerHTML = `
                 <span>第${index + 1}名</span>
+                <span>${record.nickname || '匿名玩家'}</span>
                 <span>${record.score}</span>
                 <span>${difficultyName}</span>
                 <span>${record.date}</span>
@@ -526,10 +853,12 @@ const LeaderboardModule = {
 const GameControlModule = {
     isRunning: false,
     isPaused: false,
+    gameStartTime: 0,
 
     startGame() {
         this.isRunning = true;
         this.isPaused = false;
+        this.gameStartTime = Date.now();
         
         StorageModule.incrementTotalGames();
         
@@ -570,6 +899,7 @@ const GameControlModule = {
         
         this.isRunning = true;
         this.isPaused = false;
+        this.gameStartTime = Date.now();
         
         const pauseOverlay = document.getElementById('pause-overlay');
         if (pauseOverlay) {
@@ -604,13 +934,33 @@ const GameControlModule = {
     gameOver(isWin) {
         this.isRunning = false;
         this.isPaused = false;
+
+        const gameTime = (Date.now() - this.gameStartTime) / 1000;
+        
+        if (isWin) {
+            AchievementModule.checkFirstWin();
+            AchievementModule.checkPerfectScore(GameCore.currentDifficulty);
+            if (ScoreModule.getScore() >= 1024) {
+                AchievementModule.checkSpeedKing(gameTime);
+            }
+        }
+        
+        const nicknameInput = document.getElementById('player-nickname');
+        const nickname = nicknameInput?.value || StorageModule.getPlayerNickname();
+        
+        StorageModule.savePlayerNickname(nickname);
         
         StorageModule.addLeaderboardRecord(
             ScoreModule.getScore(),
-            GameCore.currentDifficulty
+            GameCore.currentDifficulty,
+            nickname
         );
         
         this.updateButtonStates();
+    },
+
+    getGameTime() {
+        return (Date.now() - this.gameStartTime) / 1000;
     }
 };
 
@@ -648,10 +998,21 @@ const GameCore = {
         this.elements.finalScoreElement = document.getElementById('final-score');
 
         ScoreModule.init();
+        AchievementModule.init();
         this.setupDifficulty();
         this.initBoardCells();
         this.initEventListeners();
         this.resetGameState();
+
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const gameContainer = document.getElementById('game-container');
+            
+            if (loadingScreen) loadingScreen.style.display = 'none';
+            if (gameContainer) gameContainer.style.display = 'block';
+
+            WelcomeModule.show();
+        }, 3000);
     },
 
     setupDifficulty() {
@@ -974,6 +1335,11 @@ const GameCore = {
             this.elements.finalScoreElement.textContent = ScoreModule.getScore();
         }
 
+        const nicknameInput = document.getElementById('player-nickname');
+        if (nicknameInput) {
+            nicknameInput.value = StorageModule.getPlayerNickname();
+        }
+
         if (!isWin) {
             AudioModule.play('gameOver');
         }
@@ -1059,9 +1425,19 @@ window.addEventListener('DOMContentLoaded', () => {
     const leaderboardBtn = document.getElementById('leaderboard-btn');
     const closeLeaderboardBtn = document.getElementById('close-leaderboard');
     const clearLeaderboardBtn = document.getElementById('clear-leaderboard');
-    const resumeBtn = document.getElementById('resume-btn');
+    const resumeBtn = document.getElementById('resume-pause-btn');
     const audioToggleBtn = document.getElementById('audio-toggle');
     const themeToggleBtn = document.getElementById('theme-toggle');
+    const playAgainBtn = document.getElementById('play-again-btn');
+    const shareBtn = document.getElementById('share-btn');
+    const closeShareBtn = document.getElementById('close-share');
+    const copyShareBtn = document.getElementById('copy-share-btn');
+    const viewAchievementsBtn = document.getElementById('view-achievements');
+    const closeAchievementsBtn = document.getElementById('close-achievements');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const viewResumeBtn = document.getElementById('view-resume-btn');
+    const sortBySelect = document.getElementById('sort-by');
+    const filterDifficultySelect = document.getElementById('filter-difficulty');
 
     if (startBtn) {
         startBtn.addEventListener('click', () => GameControlModule.startGame());
@@ -1105,9 +1481,65 @@ window.addEventListener('DOMContentLoaded', () => {
         themeToggleBtn.addEventListener('click', () => ThemeModule.toggle());
     }
 
+    if (playAgainBtn) {
+        playAgainBtn.addEventListener('click', () => GameControlModule.restartGame());
+    }
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            ShareModule.showShare(ScoreModule.getScore(), GameCore.currentDifficulty);
+        });
+    }
+
+    if (closeShareBtn) {
+        closeShareBtn.addEventListener('click', () => ShareModule.hideShare());
+    }
+
+    if (copyShareBtn) {
+        copyShareBtn.addEventListener('click', () => ShareModule.copyToClipboard());
+    }
+
+    if (viewAchievementsBtn) {
+        viewAchievementsBtn.addEventListener('click', () => AchievementModule.showAchievements());
+    }
+
+    if (closeAchievementsBtn) {
+        closeAchievementsBtn.addEventListener('click', () => AchievementModule.hideAchievements());
+    }
+
+    if (startGameBtn) {
+        startGameBtn.addEventListener('click', () => {
+            WelcomeModule.hide();
+            GameControlModule.startGame();
+        });
+    }
+
+    if (viewResumeBtn) {
+        viewResumeBtn.addEventListener('click', () => {
+            window.open('resume.html', '_blank');
+        });
+    }
+
+    if (sortBySelect) {
+        sortBySelect.addEventListener('change', () => LeaderboardModule.updateLeaderboardDisplay());
+    }
+
+    if (filterDifficultySelect) {
+        filterDifficultySelect.addEventListener('change', () => LeaderboardModule.updateLeaderboardDisplay());
+    }
+
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('leaderboard-modal')) {
             LeaderboardModule.hideLeaderboard();
+        }
+        if (e.target.classList.contains('achievements-modal')) {
+            AchievementModule.hideAchievements();
+        }
+        if (e.target.classList.contains('share-modal')) {
+            ShareModule.hideShare();
+        }
+        if (e.target.classList.contains('welcome-modal')) {
+            WelcomeModule.hide();
         }
     });
 });
